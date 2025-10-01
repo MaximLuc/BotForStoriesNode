@@ -1,4 +1,3 @@
-import mongoose from 'mongoose'
 import { DraftEnding, DraftStory, DraftStoryDoc } from '../../db/models/DraftStory'
 import { Story } from '../../db/models/Story'
 
@@ -21,8 +20,9 @@ export async function setField(tgId: number, field: 'title'|'intro', value: stri
   await DraftStory.updateOne({ tgId }, { $set: { [field]: value.trim(), updatedAt: new Date() } })
 }
 
-function hasBoth(e: DraftEnding): e is Required<Pick<DraftEnding, 'title'|'text'>> {
-  return !!e.title && !!e.text && e.title.trim().length > 0 && e.text.trim().length > 0
+function hasBoth(e: DraftEnding): e is DraftEnding & { title: string; text: string } {
+  return typeof e.title === 'string' && e.title.trim().length > 0 &&
+         typeof e.text  === 'string' && e.text.trim().length  > 0
 }
 
 
@@ -46,6 +46,16 @@ export async function removeEnding(tgId: number, index: number) {
   await d.save()
 }
 
+export async function setStoryAccess(tgId: number, minRank: 0 | 1) {
+  await DraftStory.updateOne({ tgId }, { $set: { minRank, updatedAt: new Date() } })
+}
+export async function setEndingAccess(tgId: number, index: number, minRank: 0 | 1) {
+  const d = await getOrCreateDraft(tgId)
+  if (!d.endings[index]) d.endings[index] = { title: '', text: '', minRank: 0 }
+  d.endings[index].minRank = minRank
+  await d.save()
+}
+
 export function canCreate(d: { title?: string; intro?: string; endings: Array<{title?:string;text?:string}> }) {
   const hasEnding = d.endings.some(e => (e.title?.trim()?.length ?? 0) > 0 && (e.text?.trim()?.length ?? 0) > 0)
   return !!(d.title && d.title.trim().length >= 3) &&
@@ -54,39 +64,25 @@ export function canCreate(d: { title?: string; intro?: string; endings: Array<{t
 }
 
 export async function commitDraftToStory(tgId: number) {
-  const conn = mongoose.connection
-  console.log('[commit] using db=%s coll=%s',
-    conn.name, (Story.collection as any).name)
+  const d = await DraftStory.findOne({ tgId }) as DraftStoryDoc | null
+  if (!d) throw new Error('Draft not found')
 
-  const draft = await DraftStory.findOne({ tgId }) as DraftStoryDoc | null
-  if (!draft) throw new Error('Draft not found')
-
-  const endings = (draft.endings as DraftEnding[]).filter(hasBoth).slice(0, 3)
-  if (!draft.title || !draft.intro || endings.length === 0) throw new Error('Draft incomplete')
-
-  const before = await Story.countDocuments({}).exec()
-  console.log('[commit] stories before insert =', before)
+  const endings = (d.endings as DraftEnding[]).filter(hasBoth).slice(0, 3)
+  if (!d.title || !d.intro || endings.length === 0) throw new Error('Draft incomplete')
 
   const story = await Story.create({
-    title: draft.title.trim(),
-    text: draft.intro.trim(),
-    endings: endings.map(e => ({ title: e.title!.trim(), text: e.text!.trim() })),
-    minRank: draft.minRank ?? 0,
+    title: d.title.trim(),
+    text: d.intro.trim(),
+    endings: endings.map(e => ({
+      title: e.title!.trim(),
+      text: e.text!.trim(),
+      minRank: e.minRank ?? 0, 
+    })),
+    minRank: d.minRank ?? 0,
     isPublished: true,
   })
 
-  const check = await Story.findById(story._id).lean()
-  console.log('[commit] inserted id=', String(story._id), 'foundBack=', !!check)
-
-  const after = await Story.countDocuments({}).exec()
-  console.log('[commit] stories after insert =', after)
-
-  if (!check) throw new Error('Create failed: not found after insert')
-
-  await DraftStory.deleteOne({ tgId }).catch(err =>
-    console.warn('[commit] warn: failed to delete draft:', err)
-  )
-
+  await DraftStory.deleteOne({ tgId }).catch(() => {})
   return story
 }
 

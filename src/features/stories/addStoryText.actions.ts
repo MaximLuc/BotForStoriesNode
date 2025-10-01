@@ -4,7 +4,9 @@ import { Markup } from 'telegraf'
 import {
   getOrCreateDraft, setPending, resetPending,
   setField, setEndingTitle, setEndingText, removeEnding,
-  commitDraftToStory, canCreate
+  commitDraftToStory, canCreate,
+  setEndingAccess,
+  setStoryAccess
 } from './draft.service'
 import type { DraftEnding } from '../../db/models/DraftStory'
 import { renderAddStoryTextScreen } from '../../app/ui/screens.addStoryText'
@@ -68,6 +70,54 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery()
     await renderForm(ctx, `➡️ Отправьте *текст продолжения #${i + 1}*.`)
   })
+
+  bot.action('draft:ask_access_story', async (ctx) => {
+    await setPending(ctx.state.user!.tgId, { kind: 'accessStory' })
+    await ctx.answerCbQuery()
+    await renderForm(ctx)
+  })
+
+  bot.action('draft:access_story:all', async (ctx) => {
+    await setStoryAccess(ctx.state.user!.tgId, 0)
+    await resetPending(ctx.state.user!.tgId)
+    await ctx.answerCbQuery('Доступ: всем')
+    await renderForm(ctx, '✅ Доступ к истории: всем')
+  })
+  bot.action('draft:access_story:premium', async (ctx) => {
+    await setStoryAccess(ctx.state.user!.tgId, 1)
+    await resetPending(ctx.state.user!.tgId)
+    await ctx.answerCbQuery('Доступ: только с подпиской')
+    await renderForm(ctx, '✅ Доступ к истории: премиум')
+  })
+
+  bot.action(/^draft:ask_end_access:(\d+)$/, async (ctx) => {
+    const i = Number(ctx.match[1])
+    await setPending(ctx.state.user!.tgId, { kind: 'accessEnding', index: i })
+    await ctx.answerCbQuery()
+    await renderForm(ctx)
+  })
+
+  bot.action(/^draft:end_access_set:(\d+):all$/, async (ctx) => {
+    const i = Number(ctx.match[1])
+    await setEndingAccess(ctx.state.user!.tgId, i, 0)
+    await resetPending(ctx.state.user!.tgId)
+    await ctx.answerCbQuery('Доступ окончания: всем')
+    await renderForm(ctx, `✅ Доступ к продолжению #${i+1}: всем`)
+  })
+  bot.action(/^draft:end_access_set:(\d+):premium$/, async (ctx) => {
+    const i = Number(ctx.match[1])
+    await setEndingAccess(ctx.state.user!.tgId, i, 1)
+    await resetPending(ctx.state.user!.tgId)
+    await ctx.answerCbQuery('Доступ окончания: премиум')
+    await renderForm(ctx, `✅ Доступ к продолжению #${i+1}: премиум`)
+  })
+
+  bot.action('draft:cancel_access', async (ctx) => {
+    await resetPending(ctx.state.user!.tgId)
+    await ctx.answerCbQuery('Отменено')
+    await renderForm(ctx)
+  })
+
 
   bot.action('draft:add_ending', async (ctx) => {
     const d = await getOrCreateDraft(ctx.state.user!.tgId)
