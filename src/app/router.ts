@@ -1,6 +1,7 @@
 import type { Telegraf } from 'telegraf'
 import type { MyContext } from '../shared/types'
 import { navigate } from './ui/navigate'
+import { registerAddStoryTextActions, registerDraftTextCatcher } from '../features/stories/addStoryText.actions';
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -27,7 +28,9 @@ export function registerRouter(bot: Telegraf<MyContext>) {
 
   bot.action('admin:cover', async (ctx) => navigate(ctx, 'setCover'))
 
-  bot.action('admin:add_story_text', async (ctx) => navigate(ctx, 'addStoryText')) 
+  bindDual(bot, { text: 'Добавить историю текстом', action: 'admin:add_story_text' }, async (ctx) => navigate(ctx, 'addStoryText'))
+
+  // bot.action('admin:add_story_text', async (ctx) => navigate(ctx, 'addStoryText')) 
 
   bot.command('whoami', (ctx) => {
     const u = ctx.state.user
@@ -40,4 +43,8 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   bot.catch((err, ctx) => {
     console.error('Bot error for update', ctx.update.update_id, err)
   })
+
+  registerAddStoryTextActions(bot)
+  registerDraftTextCatcher(bot)
+
 }

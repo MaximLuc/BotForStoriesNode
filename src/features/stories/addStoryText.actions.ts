@@ -1,0 +1,174 @@
+import type { Telegraf } from 'telegraf'
+import type { MyContext } from '../../shared/types'
+import { Markup } from 'telegraf'
+import {
+  getOrCreateDraft, setPending, resetPending,
+  setField, setEndingTitle, setEndingText, removeEnding,
+  commitDraftToStory, canCreate
+} from './draft.service'
+import type { DraftEnding } from '../../db/models/DraftStory'
+import { renderAddStoryTextScreen } from '../../app/ui/screens.addStoryText'
+import { getLastMessageId } from '../../app/middlewares/singleMessage'
+import { isAdmin } from '../../shared/utils'
+
+let ACTIONS_REGISTERED = false
+
+async function updateMenu(ctx: MyContext, text: string, inline?: any) {
+  const kb = inline ? (inline.reply_markup ? inline : { reply_markup: inline }) : undefined
+  if (ctx.callbackQuery && 'message' in ctx.callbackQuery) {
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', ...kb })
+    return
+  }
+  const chatId = ctx.chat?.id
+  if (chatId) {
+    const lastId = getLastMessageId(chatId)
+    if (lastId) {
+      try {
+        await ctx.telegram.editMessageText(chatId, lastId, undefined, text, { parse_mode: 'Markdown', ...kb })
+        return
+      } catch {}
+    }
+  }
+  const sent = await ctx.reply(text, { parse_mode: 'Markdown', ...kb })
+  ;(ctx.state as any)?.rememberMessageId?.(sent.message_id)
+}
+
+async function renderForm(ctx: MyContext, hint?: string) {
+  const payload = await renderAddStoryTextScreen(ctx)
+  const text = hint ? `${payload.text}\n\n${hint}` : payload.text
+  await updateMenu(ctx, text, payload.inline)
+}
+
+export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
+  if (ACTIONS_REGISTERED) return
+  ACTIONS_REGISTERED = true
+
+  bot.action('draft:set_title', async (ctx) => {
+    await setPending(ctx.state.user!.tgId, { kind: 'title' })
+    await ctx.answerCbQuery()
+    await renderForm(ctx, '➡️ Задайте *название истории*.')
+  })
+
+  bot.action('draft:set_intro', async (ctx) => {
+    await setPending(ctx.state.user!.tgId, { kind: 'intro' })
+    await ctx.answerCbQuery()
+    await renderForm(ctx, '➡️ Отправьте *начало истории*.')
+  })
+
+  bot.action(/^draft:set_end_title:(\d+)$/, async (ctx) => {
+    const i = Number(ctx.match[1])
+    await setPending(ctx.state.user!.tgId, { kind: 'endingTitle', index: i })
+    await ctx.answerCbQuery()
+    await renderForm(ctx, `➡️ Задайте *название продолжения #${i + 1}*.`)
+  })
+
+  bot.action(/^draft:set_end_text:(\d+)$/, async (ctx) => {
+    const i = Number(ctx.match[1])
+    await setPending(ctx.state.user!.tgId, { kind: 'endingText', index: i })
+    await ctx.answerCbQuery()
+    await renderForm(ctx, `➡️ Отправьте *текст продолжения #${i + 1}*.`)
+  })
+
+  bot.action('draft:add_ending', async (ctx) => {
+    const d = await getOrCreateDraft(ctx.state.user!.tgId)
+    if (d.endings.length >= 3) {
+      await ctx.answerCbQuery('Максимум 3 продолжения')
+      return
+    }
+    const index = d.endings.length
+    await setPending(ctx.state.user!.tgId, { kind: 'endingTitle', index })
+    await ctx.answerCbQuery()
+    await renderForm(ctx, `➡️ Задайте *название продолжения #${index + 1}*.`)
+  })
+
+  bot.action(/^draft:del_end:(\d+)$/, async (ctx) => {
+    const i = Number(ctx.match[1])
+    await removeEnding(ctx.state.user!.tgId, i)
+    await ctx.answerCbQuery('Удалено')
+    await renderForm(ctx)
+  })
+
+  bot.action('draft:commit', async (ctx) => {
+    await ctx.answerCbQuery()
+    const tgId = ctx.state.user!.tgId
+    try {
+      const d = await getOrCreateDraft(tgId)
+      const ready = canCreate({
+        title: d.title ?? undefined,
+        intro: d.intro ?? undefined,
+        endings: d.endings as DraftEnding[],
+      })
+      if (!ready) {
+        await updateMenu(
+          ctx,
+          'Черновик заполнен не полностью. Нужны: название, начало и хотя бы одно продолжение.',
+          Markup.inlineKeyboard([[{ text: '⬅️ Назад', callback_data: 'admin' }]])
+        )
+        return
+      }
+
+      const story = await commitDraftToStory(tgId)
+      const okId = String(story._id)
+      console.log('[draft:commit] created story _id=', okId)
+      await updateMenu(
+        ctx,
+        `✅ История добавлена: *${story.title}* (окон. ${story.endings.length})`,
+        Markup.inlineKeyboard([
+          [{ text: '➕ Добавить обложку', callback_data: 'admin:cover' }],
+          [{ text: '⬅️ В админ-меню', callback_data: 'admin' }],
+        ])
+      )
+    } catch (e) {
+      console.error('[draft:commit] error:', e)
+      await updateMenu(
+        ctx,
+        'Ошибка при сохранении истории. Попробуйте ещё раз.',
+        Markup.inlineKeyboard([[{ text: '⬅️ Назад', callback_data: 'admin' }]])
+      )
+    }
+  })
+}
+
+export async function registerDraftTextCatcher(bot: Telegraf<MyContext>) {
+  bot.on('message', async (ctx, next) => {
+    const u = ctx.state.user
+    if (!u || !isAdmin(u)) return next()
+
+    const m: any = ctx.message
+    const text: string | undefined =
+      typeof m?.text === 'string' ? m.text.trim()
+      : (typeof m?.caption === 'string' ? m.caption.trim() : undefined)
+    if (!text) return next()
+
+    const d = await getOrCreateDraft(u.tgId)
+    if (!d.pendingInput) return next()
+
+    let err: string | null = null
+    try {
+      const p = d.pendingInput as any
+      if (p.kind === 'title') {
+        if (text.length < 3 || text.length > 200) throw new Error('Название 3..200 символов')
+        await setField(u.tgId, 'title', text)
+      } else if (p.kind === 'intro') {
+        if (text.length < 10) throw new Error('Начало слишком короткое')
+        await setField(u.tgId, 'intro', text)
+      } else if (p.kind === 'endingTitle') {
+        if (text.length < 3 || text.length > 200) throw new Error('Название продолжения 3..200 символов')
+        await setEndingTitle(u.tgId, p.index, text)
+      } else if (p.kind === 'endingText') {
+        if (text.length < 5) throw new Error('Текст продолжения слишком короткий')
+        await setEndingText(u.tgId, p.index, text)
+      }
+      await resetPending(u.tgId)
+    } catch (e: any) {
+      err = e?.message ?? 'Ошибка валидации'
+    }
+
+    const payload = await renderAddStoryTextScreen(ctx)
+    const postfix = err ? `❌ ${err}` : '✅ Сохранено.'
+    await updateMenu(ctx, `${payload.text}\n\n${postfix}`, payload.inline)
+
+
+    try { await ctx.deleteMessage(m.message_id) } catch {}
+  })
+}

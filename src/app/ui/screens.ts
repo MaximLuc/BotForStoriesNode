@@ -2,6 +2,7 @@ import type { MyContext } from '../../shared/types'
 import { buildInlineMain } from './menus'
 import { Markup } from 'telegraf'
 import { isAdmin } from '../../shared/utils'
+import { renderAddStoryTextScreen } from './screens.addStoryText'
 
 export type ScreenId =
   | 'main'
@@ -71,10 +72,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     inline: Markup.inlineKeyboard([[Markup.button.callback('Назад', 'admin')]]),
   }),
 
-  addStoryText:()=>({
-    text: 'Добавить историю текстом (заглушка)',
-    inline: Markup.inlineKeyboard([[Markup.button.callback('Назад', 'admin')]]),
-  })
+  addStoryText: (ctx) => renderAddStoryTextScreen(ctx),
 }
 
 export function getScreen(ctx: MyContext, id: ScreenId): ScreenPayload {
