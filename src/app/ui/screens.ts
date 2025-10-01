@@ -8,6 +8,9 @@ export type ScreenId =
   | 'profile'
   | 'admin'
   | 'storiesList'
+  | 'statistics'
+  | 'setCover'
+  | 'addStoryText'
 
 
 export type ScreenPayload = {
@@ -45,6 +48,9 @@ const screens: Record<ScreenId, ScreenRenderer> = {
       text: 'Админ-панель (демо)',
       inline: Markup.inlineKeyboard([
         [Markup.button.callback('Истории', 'admin:stories')],
+        [Markup.button.callback('Статистика', 'admin:statistics')],
+        [Markup.button.callback('Обложки', 'admin:cover')],
+        [Markup.button.callback('История текстом', 'admin:add_story_text')],
         [Markup.button.callback('Назад', 'main')],
       ]),
     }
@@ -52,8 +58,23 @@ const screens: Record<ScreenId, ScreenRenderer> = {
 
   storiesList: () => ({
     text: 'Список историй (заглушка)',
-    inline: Markup.inlineKeyboard([[Markup.button.callback('Назад', 'main')]]),
+    inline: Markup.inlineKeyboard([[Markup.button.callback('Назад', 'admin')]]),
   }),
+
+  statistics:()=>({
+    text: 'Статистика (заглушка)',
+    inline: Markup.inlineKeyboard([[Markup.button.callback('Назад', 'admin')]]),
+  }),
+
+  setCover:()=>({
+    text: 'Установить обложку (заглушка)',
+    inline: Markup.inlineKeyboard([[Markup.button.callback('Назад', 'admin')]]),
+  }),
+
+  addStoryText:()=>({
+    text: 'Добавить историю текстом (заглушка)',
+    inline: Markup.inlineKeyboard([[Markup.button.callback('Назад', 'admin')]]),
+  })
 }
 
 export function getScreen(ctx: MyContext, id: ScreenId): ScreenPayload {

@@ -2,7 +2,6 @@ import type { Telegraf } from 'telegraf'
 import type { MyContext } from '../shared/types'
 import { navigate } from './ui/navigate'
 
-// универсальный биндер: hears + action
 function bindDual(
   bot: Telegraf<MyContext>,
   opts: { text: string; action: string },
@@ -23,6 +22,12 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   bindDual(bot, { text: 'Админ', action: 'admin' }, async (ctx) => navigate(ctx, 'admin'))
 
   bot.action('admin:stories', async (ctx) => navigate(ctx, 'storiesList'))
+
+  bot.action('admin:statistics', async (ctx) => navigate(ctx, 'statistics'))
+
+  bot.action('admin:cover', async (ctx) => navigate(ctx, 'setCover'))
+
+  bot.action('admin:add_story_text', async (ctx) => navigate(ctx, 'addStoryText')) 
 
   bot.command('whoami', (ctx) => {
     const u = ctx.state.user
