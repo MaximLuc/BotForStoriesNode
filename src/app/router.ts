@@ -2,6 +2,7 @@ import type { Telegraf } from 'telegraf'
 import type { MyContext } from '../shared/types'
 import { navigate } from './ui/navigate'
 import { registerAddStoryTextActions, registerDraftTextCatcher } from '../features/stories/addStoryText.actions';
+import { registerCoverActions } from '../features/stories/cover.actions';
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -46,5 +47,6 @@ export function registerRouter(bot: Telegraf<MyContext>) {
 
   registerAddStoryTextActions(bot)
   registerDraftTextCatcher(bot)
+  registerCoverActions(bot)
 
 }

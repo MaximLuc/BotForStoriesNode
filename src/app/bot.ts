@@ -4,6 +4,7 @@ import { registerRouter } from './router'
 import { rateLimit } from './middlewares/rateLimit'
 import {auth} from './middlewares/auth'
 import { singleMessage } from './middlewares/singleMessage'
+import { coverPendingGuard } from './middlewares/coverPendingGuard'
 
 export function initBot(token:string){
     const bot = new Telegraf(token);
@@ -11,6 +12,7 @@ export function initBot(token:string){
     bot.use(rateLimit)
     bot.use(auth)
     bot.use(singleMessage)
+    bot.use(coverPendingGuard)
     registerRouter(bot)
 
     return {bot}

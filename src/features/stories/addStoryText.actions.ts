@@ -164,7 +164,7 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
         ctx,
         `✅ История добавлена: *${story.title}* (окон. ${story.endings.length})`,
         Markup.inlineKeyboard([
-          [{ text: '➕ Добавить обложку', callback_data: 'admin:cover' }],
+          [{ text: '➕ Добавить обложку', callback_data:`cover:add:${story._id}`}],
           [{ text: '⬅️ В админ-меню', callback_data: 'admin' }],
         ])
       )
