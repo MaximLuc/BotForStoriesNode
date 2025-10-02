@@ -63,6 +63,38 @@ export function registerCoverActions(bot: Telegraf<MyContext>) {
     );
   });
 
+  bot.action(/^cover:delete:(.+)$/, async (ctx) => {
+    const storyId = String(ctx.match[1]);
+    await ctx.answerCbQuery("Удаление...");
+
+    try {
+      await Story.updateOne({ _id: storyId }, { $unset: { coverUrl: 1 } });
+      if (ctx.state.user?.tgId) clearPendingCover(ctx.state.user.tgId);
+
+      await updateMenu(
+        ctx,
+        "✅ Обложка удалена.",
+        Markup.inlineKeyboard([
+          [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
+          [
+            {
+              text: "➕ Обновить обложку",
+              callback_data: `cover:add:${storyId}`,
+            },
+          ],
+        ])
+      );
+    } catch (e) {
+      await updateMenu(
+        ctx,
+        "❌ Не удалось удалить обложку. Попробуйте через меню админа.",
+        Markup.inlineKeyboard([
+          [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
+        ])
+      );
+    }
+  });
+
   bot.on("message", async (ctx, next) => {
     const tgId = ctx.state.user?.tgId;
     if (!tgId) return next();
@@ -102,7 +134,12 @@ export function registerCoverActions(bot: Telegraf<MyContext>) {
         "✅ Обложка сохранена.",
         Markup.inlineKeyboard([
           [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
-        //   [{ text: " 🗑 Удалить обложку", callback_data: "cover:delete" }],
+          [
+            {
+              text: "🗑 Удалить обложку",
+              callback_data: `cover:delete:${storyId}`,
+            },
+          ],
         ])
       );
     } catch {

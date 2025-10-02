@@ -13,7 +13,7 @@ export function hasPremiumAccess(user?: UserDoc) {
 
 export function buildReplyMain(user?: UserDoc) {
   const rows: string[][] = [
-    ['Меню', 'Профиль'],
+    ['Меню', 'Профиль','Читать истории'],
   ]
   if (hasAdminAccess(user)) rows.push(['Админ'])
   
@@ -24,6 +24,7 @@ export function buildInlineMain(user?: UserDoc) {
   const rows = [
     [Markup.button.callback('Меню', 'menu')],
     [Markup.button.callback('Профиль', 'profile')],
+    [Markup.button.callback('Читать истории', 'read_stories')],
   ] as any[]
   if (hasAdminAccess(user)) rows.push([Markup.button.callback('Админ', 'admin')])
   return Markup.inlineKeyboard(rows)

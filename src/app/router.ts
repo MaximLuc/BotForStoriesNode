@@ -23,6 +23,8 @@ export function registerRouter(bot: Telegraf<MyContext>) {
 
   bindDual(bot, { text: 'Админ', action: 'admin' }, async (ctx) => navigate(ctx, 'admin'))
 
+  bindDual(bot, { text: 'Читать истории', action: 'read_stories' }, async (ctx) => navigate(ctx, 'readStories'))
+
   bot.action('admin:stories', async (ctx) => navigate(ctx, 'storiesList'))
 
   bot.action('admin:statistics', async (ctx) => navigate(ctx, 'statistics'))
@@ -31,8 +33,14 @@ export function registerRouter(bot: Telegraf<MyContext>) {
 
   bindDual(bot, { text: 'Добавить историю текстом', action: 'admin:add_story_text' }, async (ctx) => navigate(ctx, 'addStoryText'))
 
-  // bot.action('admin:add_story_text', async (ctx) => navigate(ctx, 'addStoryText')) 
-
+  bot.action(/^read:story:(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery()
+    // пока заглушка;
+    await ctx.editMessageText(
+      '📖 Чтение истории скоро будет доступно.\nВыбор истории зарегистрирован.',
+      { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад к списку', callback_data: 'read_stories' }]] } }
+    )
+  })
   bot.command('whoami', (ctx) => {
     const u = ctx.state.user
     if (!u) return ctx.reply('пользователь не найден')

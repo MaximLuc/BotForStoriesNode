@@ -41,6 +41,19 @@ async function renderForm(ctx: MyContext, hint?: string) {
   await updateMenu(ctx, text, payload.inline)
 }
 
+async function tryDeleteUserMessages(ctx: MyContext) {
+  const msg: any = ctx.message
+  const multi: number[] | undefined = (ctx.state as any)._mergedMsgIds
+  if (Array.isArray(multi)) {
+    for (const id of multi) {
+      try { await ctx.deleteMessage(id) } catch {}
+    }
+  } else if (msg?.message_id) {
+    try { await ctx.deleteMessage(msg.message_id) } catch {}
+  }
+  ;(ctx.state as any)._mergedMsgIds = undefined
+}
+
 export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
   if (ACTIONS_REGISTERED) return
   ACTIONS_REGISTERED = true
@@ -118,7 +131,6 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
     await renderForm(ctx)
   })
 
-
   bot.action('draft:add_ending', async (ctx) => {
     const d = await getOrCreateDraft(ctx.state.user!.tgId)
     if (d.endings.length >= 3) {
@@ -184,10 +196,13 @@ export async function registerDraftTextCatcher(bot: Telegraf<MyContext>) {
     const u = ctx.state.user
     if (!u || !isAdmin(u)) return next()
 
-    const m: any = ctx.message
-    const text: string | undefined =
-      typeof m?.text === 'string' ? m.text.trim()
-      : (typeof m?.caption === 'string' ? m.caption.trim() : undefined)
+    const merged: string | undefined = (ctx.state as any)._mergedText
+    const msg: any = ctx.message
+    const fallback: string | undefined =
+      typeof msg?.text === 'string' ? msg.text.trim()
+      : (typeof msg?.caption === 'string' ? msg.caption.trim() : undefined)
+
+    const text: string | undefined = merged?.trim() || fallback
     if (!text) return next()
 
     const d = await getOrCreateDraft(u.tgId)
@@ -212,13 +227,14 @@ export async function registerDraftTextCatcher(bot: Telegraf<MyContext>) {
       await resetPending(u.tgId)
     } catch (e: any) {
       err = e?.message ?? 'Ошибка валидации'
+    } finally {
+      ;(ctx.state as any)._mergedText = undefined
     }
 
     const payload = await renderAddStoryTextScreen(ctx)
     const postfix = err ? `❌ ${err}` : '✅ Сохранено.'
     await updateMenu(ctx, `${payload.text}\n\n${postfix}`, payload.inline)
 
-
-    try { await ctx.deleteMessage(m.message_id) } catch {}
+    await tryDeleteUserMessages(ctx)
   })
 }

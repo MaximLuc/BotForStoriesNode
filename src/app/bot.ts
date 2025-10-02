@@ -5,6 +5,7 @@ import { rateLimit } from './middlewares/rateLimit'
 import {auth} from './middlewares/auth'
 import { singleMessage } from './middlewares/singleMessage'
 import { coverPendingGuard } from './middlewares/coverPendingGuard'
+import { longTextMerge } from './middlewares/longTextMerge'
 
 export function initBot(token:string){
     const bot = new Telegraf(token);
@@ -13,6 +14,7 @@ export function initBot(token:string){
     bot.use(auth)
     bot.use(singleMessage)
     bot.use(coverPendingGuard)
+    bot.use(longTextMerge)
     registerRouter(bot)
 
     return {bot}
