@@ -4,7 +4,7 @@ import type { ScreenPayload } from './screens'
 import { Story } from '../../db/models/Story'
 import type { InlineKeyboardButton } from 'telegraf/types'
 
-const PAGE_SIZE = 10 // по 10 историй на страницу
+const PAGE_SIZE = 10
 
 function truncate(text: string, max = 40) {
   const t = (text ?? '').trim()
@@ -33,7 +33,6 @@ function twoColButtons(items: { _id: string, title: string, minRank?: number }[]
 }
 
 export async function renderReadStoriesScreen(ctx: MyContext): Promise<ScreenPayload> {
-  // читаем страницу из callback-data, если есть; иначе 0
   let page = 0
   const data = (typeof ctx.callbackQuery === 'object' && 'data' in (ctx.callbackQuery ?? {}))
     ? String((ctx.callbackQuery as any).data) : ''
@@ -60,7 +59,6 @@ export async function renderReadStoriesScreen(ctx: MyContext): Promise<ScreenPay
     }
   }
 
-  // Верхний текст-список
   const header = `📚 Доступные истории (★ — премиум)\nСтр. ${page + 1}/${pages} · всего ${total}\n`
   const lines = docs.map(s => {
     const left = `${star(s.minRank)}${truncate(s.title)}`
@@ -69,10 +67,8 @@ export async function renderReadStoriesScreen(ctx: MyContext): Promise<ScreenPay
   })
   const text = [header, ...lines].join('\n')
 
-  // Кнопки историй (2 колонки)
   const storyRows = twoColButtons(docs.map(d => ({ _id: String(d._id), title: d.title, minRank: d.minRank })))
 
-  // Навигация
   const navRow: InlineKeyboardButton[] = []
   if (page > 0) navRow.push(Markup.button.callback('◀️ Назад', `read_stories:page:${page - 1}`))
   if (page < pages - 1) navRow.push(Markup.button.callback('Вперёд ▶️', `read_stories:page:${page + 1}`))

@@ -3,6 +3,7 @@ import type { MyContext } from '../shared/types'
 import { navigate } from './ui/navigate'
 import { registerAddStoryTextActions, registerDraftTextCatcher } from '../features/stories/addStoryText.actions';
 import { registerCoverActions } from '../features/stories/cover.actions';
+import { registerReadHandlers } from '../features/reading/read.handlers';
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -35,14 +36,6 @@ export function registerRouter(bot: Telegraf<MyContext>) {
 
   bot.action(/^read_stories:page:(\d+)$/, async (ctx) => navigate(ctx, 'readStories'))
 
-  bot.action(/^story:(.+)$/, async (ctx) => {
-    await ctx.answerCbQuery()
-    await ctx.editMessageText(
-      '📖 Чтение истории скоро будет доступно.',
-      { reply_markup: { inline_keyboard: [[{ text: '⬅️ Назад к списку', callback_data: 'read_stories' }]] } }
-    )
-  })
-
   bot.command('whoami', (ctx) => {
     const u = ctx.state.user
     if (!u) return ctx.reply('пользователь не найден')
@@ -54,6 +47,8 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   bot.catch((err, ctx) => {
     console.error('Bot error for update', ctx.update.update_id, err)
   })
+
+  registerReadHandlers(bot) 
 
   registerAddStoryTextActions(bot)
   registerDraftTextCatcher(bot)
