@@ -3,7 +3,7 @@ import { buildInlineMain } from './menus'
 import { Markup } from 'telegraf'
 import { isAdmin } from '../../shared/utils'
 import { renderAddStoryTextScreen } from './screens.addStoryText'
-import { renderStoriesListScreen } from './screens.readStories'
+import { renderReadStoriesScreen } from './screens.readStories'
 
 export type ScreenId =
   | 'main'
@@ -76,7 +76,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
 
   addStoryText: (ctx) => renderAddStoryTextScreen(ctx),
   
-  readStories: (ctx) => renderStoriesListScreen(ctx),
+  readStories: (ctx) => renderReadStoriesScreen(ctx),
 }
 
 export function getScreen(ctx: MyContext, id: ScreenId): ScreenPayload {
