@@ -28,8 +28,8 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
     return {
       text: `Доступ к истории: сейчас *${accessLabel(d.minRank)}*\nВыберите доступ:`,
       inline: Markup.inlineKeyboard([
-        [cb('🌐 Всем', 'draft:access_story:all')],
-        [cb('🔒 Только с подпиской', 'draft:access_story:premium')],
+        [cb('🌏 ВСЕМ', 'draft:access_story:all')],
+        [cb('👥 ТОЛЬКО ПОДПИСЧИКАМ', 'draft:access_story:premium')],
         [cb('⬅️ Отмена', 'draft:cancel_access')],
       ]),
     }
@@ -40,8 +40,8 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
     return {
       text: `Доступ к продолжению #${i+1}: сейчас *${accessLabel(e?.minRank)}*\nВыберите доступ:`,
       inline: Markup.inlineKeyboard([
-        [cb('🌐 Всем', `draft:end_access_set:${i}:all`)],
-        [cb('🔒 Только с подпиской', `draft:end_access_set:${i}:premium`)],
+        [cb('🌏 ВСЕМ', `draft:end_access_set:${i}:all`)],
+        [cb('👥 ТОЛЬКО ПОДПИСЧИКАМ', `draft:end_access_set:${i}:premium`)],
         [cb('⬅️ Отмена', 'draft:cancel_access')],
       ]),
     }
@@ -49,19 +49,19 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
 
   const rows: InlineKeyboardButton[][] = []
 
-  rows.push([cb('📝 Задать название', 'draft:set_title')])
-  rows.push([cb('✍️ Задать начало истории', 'draft:set_intro')])
-  rows.push([cb(`🔐 Доступ к истории: ${accessLabel(d.minRank)}`, 'draft:ask_access_story')])
-  rows.push([cb('➕ Добавить продолжение', 'draft:add_ending')])
+  rows.push([cb('🪝ЗАДАТЬ НАЗВАНИЕ', 'draft:set_title')])
+  rows.push([cb('🗣️ДОБАВИТЬ ТЕКСТ ДО ВЫБОРА', 'draft:set_intro')])
+  rows.push([cb(`🔐ДОСТУП К ИСТОРИИ: ${accessLabel(d.minRank)}`, 'draft:ask_access_story')])
+  rows.push([cb('📎ДОБАВИТЬ ПРОДОЛЖЕНИЕ ', 'draft:add_ending')])
 
   ;(d.endings as DraftEnding[]).forEach((e, i) => {
     rows.push([
-      cb(`✏️ Название #${i+1}`, `draft:set_end_title:${i}`),
-      cb(`🧾 Текст #${i+1}`, `draft:set_end_text:${i}`),
+      cb(`🖋️НАЗВАНИЕ №${i+1}`, `draft:set_end_title:${i}`),
+      cb(`📃ТЕКСТ №${i+1}`, `draft:set_end_text:${i}`),
     ])
     rows.push([
-      cb(`🗑 Удалить #${i+1}`, `draft:del_end:${i}`),
-      cb(`🔐 Доступ: ${accessLabel(e?.minRank)}`, `draft:ask_end_access:${i}`),
+      cb(`🗑️УДАЛИТЬ №${i+1}`, `draft:del_end:${i}`),
+      cb(`🔐ДОСТУП: ${accessLabel(e?.minRank)}`, `draft:ask_end_access:${i}`),
     ])
   })
 

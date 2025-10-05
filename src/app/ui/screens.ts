@@ -27,7 +27,7 @@ type ScreenRenderer = (ctx: MyContext) => Promise<ScreenPayload> | ScreenPayload
 
 const screens: Record<ScreenId, ScreenRenderer> = {
   main: (ctx) => ({
-    text: `Привет, ${ctx.from?.first_name || 'друг'}!`,
+    text: `Добро пожаловать в (название бота), ${ctx.from?.first_name || 'дорогой подписчик!'}!  В этом боте ты можешь прочитать уникальные истории, финал которых зависит только от твоего выбора. Приятного пользования🌸`,
     inline: buildInlineMain(ctx.state.user),
     setReplyKeyboard: true,
     replyNoticeText: '',
@@ -51,9 +51,9 @@ const screens: Record<ScreenId, ScreenRenderer> = {
       text: 'Админ-панель (демо)',
       inline: Markup.inlineKeyboard([
         [Markup.button.callback('Истории', 'admin:stories')],
-        [Markup.button.callback('Статистика', 'admin:statistics')],
+        [Markup.button.callback('🧑‍💻СТАТИСТИКА🧑‍💻', 'admin:statistics')],
         [Markup.button.callback('Обложки', 'admin:cover')],
-        [Markup.button.callback('История текстом', 'admin:add_story_text')],
+        [Markup.button.callback('📜ДОБАВИТЬ ИСТОРИЮ📜', 'admin:add_story_text')],
         [Markup.button.callback('Назад', 'main')],
       ]),
     }
