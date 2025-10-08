@@ -1,9 +1,11 @@
 import type { Telegraf } from 'telegraf'
 import type { MyContext } from '../shared/types'
 import { navigate } from './ui/navigate'
-import { registerAddStoryTextActions, registerDraftTextCatcher } from '../features/stories/addStoryText.actions';
+import { registerAddStoryTextActions} from '../features/stories/addStoryText.actions';
 import { registerCoverActions } from '../features/stories/cover.actions';
 import { registerReadHandlers } from '../features/reading/read.handlers';
+import { registerDraftInputCollector } from '../features/stories/addStoryText.collector';
+import { registerDraftFinishHandlers } from '../features/stories/addStoryText.finish';
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -51,7 +53,8 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   registerReadHandlers(bot) 
 
   registerAddStoryTextActions(bot)
-  registerDraftTextCatcher(bot)
+  registerDraftInputCollector(bot)
+  registerDraftFinishHandlers(bot)
   registerCoverActions(bot)
 
 }

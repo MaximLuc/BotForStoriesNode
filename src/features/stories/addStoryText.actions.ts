@@ -5,33 +5,25 @@ import {
   getOrCreateDraft, setPending, resetPending,
   setField, setEndingTitle, setEndingText, removeEnding,
   commitDraftToStory, canCreate,
-  setEndingAccess,
-  setStoryAccess
+  setEndingAccess, setStoryAccess
 } from './draft.service'
 import type { DraftEnding } from '../../db/models/DraftStory'
 import { renderAddStoryTextScreen } from '../../app/ui/screens.addStoryText'
 import { getLastMessageId } from '../../app/middlewares/singleMessage'
 import { isAdmin } from '../../shared/utils'
+import { aggStart } from './input.aggregator'
 
 let ACTIONS_REGISTERED = false
 
+function html(s = '') { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
 async function updateMenu(ctx: MyContext, text: string, inline?: any) {
   const kb = inline ? (inline.reply_markup ? inline : { reply_markup: inline }) : undefined
-  if (ctx.callbackQuery && 'message' in ctx.callbackQuery) {
-    await ctx.editMessageText(text, { parse_mode: 'Markdown', ...kb })
+  try {
+    await ctx.editMessageText(text, { parse_mode: 'HTML', ...kb })
     return
-  }
-  const chatId = ctx.chat?.id
-  if (chatId) {
-    const lastId = getLastMessageId(chatId)
-    if (lastId) {
-      try {
-        await ctx.telegram.editMessageText(chatId, lastId, undefined, text, { parse_mode: 'Markdown', ...kb })
-        return
-      } catch {}
-    }
-  }
-  const sent = await ctx.reply(text, { parse_mode: 'Markdown', ...kb })
+  } catch {}
+  const sent = await ctx.reply(text, { parse_mode: 'HTML', ...kb })
   ;(ctx.state as any)?.rememberMessageId?.(sent.message_id)
 }
 
@@ -41,17 +33,12 @@ async function renderForm(ctx: MyContext, hint?: string) {
   await updateMenu(ctx, text, payload.inline)
 }
 
-async function tryDeleteUserMessages(ctx: MyContext) {
-  const msg: any = ctx.message
-  const multi: number[] | undefined = (ctx.state as any)._mergedMsgIds
-  if (Array.isArray(multi)) {
-    for (const id of multi) {
-      try { await ctx.deleteMessage(id) } catch {}
-    }
-  } else if (msg?.message_id) {
-    try { await ctx.deleteMessage(msg.message_id) } catch {}
-  }
-  ;(ctx.state as any)._mergedMsgIds = undefined
+function inputWaitKb() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('✅ Готово', 'draft:finish_input')],
+    [Markup.button.callback('✖ Отмена', 'draft:cancel_input')],
+    [Markup.button.callback('↩︎ Назад', 'admin:add_story_text')],
+  ])
 }
 
 export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
@@ -59,29 +46,37 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
   ACTIONS_REGISTERED = true
 
   bot.action('draft:set_title', async (ctx) => {
-    await setPending(ctx.state.user!.tgId, { kind: 'title' })
+    const tgId = ctx.state.user!.tgId
+    await setPending(tgId, { kind: 'title' })
+    aggStart(tgId, ctx.chat!.id, 'title')
     await ctx.answerCbQuery()
-    await renderForm(ctx, '➡️ Задайте *название истории*.')
+    await updateMenu(ctx, 'Отправляйте название (можно частями). Когда закончите — нажмите <b>«Готово»</b>.', inputWaitKb())
   })
 
   bot.action('draft:set_intro', async (ctx) => {
-    await setPending(ctx.state.user!.tgId, { kind: 'intro' })
+    const tgId = ctx.state.user!.tgId
+    await setPending(tgId, { kind: 'intro' })
+    aggStart(tgId, ctx.chat!.id, 'intro')
     await ctx.answerCbQuery()
-    await renderForm(ctx, '➡️ Отправьте *начало истории*.')
+    await updateMenu(ctx, 'Отправляйте <b>начало истории</b> (можно частями). Когда закончите — нажмите <b>«Готово»</b>.', inputWaitKb())
   })
 
   bot.action(/^draft:set_end_title:(\d+)$/, async (ctx) => {
     const i = Number(ctx.match[1])
-    await setPending(ctx.state.user!.tgId, { kind: 'endingTitle', index: i })
+    const tgId = ctx.state.user!.tgId
+    await setPending(tgId, { kind: 'endingTitle', index: i })
+    aggStart(tgId, ctx.chat!.id, 'endingTitle')
     await ctx.answerCbQuery()
-    await renderForm(ctx, `➡️ Задайте *название продолжения #${i + 1}*.`)
+    await updateMenu(ctx, `Отправляйте <b>название продолжения #${i+1}</b>. Нажмите <b>«Готово»</b>, когда закончите.`, inputWaitKb())
   })
 
   bot.action(/^draft:set_end_text:(\d+)$/, async (ctx) => {
     const i = Number(ctx.match[1])
-    await setPending(ctx.state.user!.tgId, { kind: 'endingText', index: i })
+    const tgId = ctx.state.user!.tgId
+    await setPending(tgId, { kind: 'endingText', index: i })
+    aggStart(tgId, ctx.chat!.id, 'endingText')
     await ctx.answerCbQuery()
-    await renderForm(ctx, `➡️ Отправьте *текст продолжения #${i + 1}*.`)
+    await updateMenu(ctx, `Отправляйте <b>текст продолжения #${i+1}</b>. Нажмите <b>«Готово»</b>, когда закончите.`, inputWaitKb())
   })
 
   bot.action('draft:ask_access_story', async (ctx) => {
@@ -139,8 +134,9 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
     }
     const index = d.endings.length
     await setPending(ctx.state.user!.tgId, { kind: 'endingTitle', index })
+    aggStart(ctx.state.user!.tgId, ctx.chat!.id, 'endingTitle')
     await ctx.answerCbQuery()
-    await renderForm(ctx, `➡️ Задайте *название продолжения #${index + 1}*.`)
+    await updateMenu(ctx, `Отправляйте <b>название продолжения #${index+1}</b>. Нажмите <b>«Готово»</b>, когда закончите.`, inputWaitKb())
   })
 
   bot.action(/^draft:del_end:(\d+)$/, async (ctx) => {
@@ -170,13 +166,11 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
       }
 
       const story = await commitDraftToStory(tgId)
-      const okId = String(story._id)
-      console.log('[draft:commit] created story _id=', okId)
       await updateMenu(
         ctx,
-        `✅ История добавлена: *${story.title}* (окон. ${story.endings.length})`,
+        `✅ История добавлена: <b>${html(story.title)}</b> (окон. ${story.endings.length})`,
         Markup.inlineKeyboard([
-          [{ text: '🌌ОБЛОЖКА🌌', callback_data:`cover:add:${story._id}`}],
+          [{ text: '🌌 ОБЛОЖКА', callback_data:`cover:add:${story._id}`}],
           [{ text: '⬅️ В админ-меню', callback_data: 'admin' }],
         ])
       )
@@ -188,53 +182,5 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
         Markup.inlineKeyboard([[{ text: '⬅️ Назад', callback_data: 'admin' }]])
       )
     }
-  })
-}
-
-export async function registerDraftTextCatcher(bot: Telegraf<MyContext>) {
-  bot.on('message', async (ctx, next) => {
-    const u = ctx.state.user
-    if (!u || !isAdmin(u)) return next()
-
-    const merged: string | undefined = (ctx.state as any)._mergedText
-    const msg: any = ctx.message
-    const fallback: string | undefined =
-      typeof msg?.text === 'string' ? msg.text.trim()
-      : (typeof msg?.caption === 'string' ? msg.caption.trim() : undefined)
-
-    const text: string | undefined = merged?.trim() || fallback
-    if (!text) return next()
-
-    const d = await getOrCreateDraft(u.tgId)
-    if (!d.pendingInput) return next()
-
-    let err: string | null = null
-    try {
-      const p = d.pendingInput as any
-      if (p.kind === 'title') {
-        if (text.length < 3 || text.length > 200) throw new Error('Название 3..200 символов')
-        await setField(u.tgId, 'title', text)
-      } else if (p.kind === 'intro') {
-        if (text.length < 10) throw new Error('Начало слишком короткое')
-        await setField(u.tgId, 'intro', text)
-      } else if (p.kind === 'endingTitle') {
-        if (text.length < 3 || text.length > 200) throw new Error('Название продолжения 3..200 символов')
-        await setEndingTitle(u.tgId, p.index, text)
-      } else if (p.kind === 'endingText') {
-        if (text.length < 5) throw new Error('Текст продолжения слишком короткий')
-        await setEndingText(u.tgId, p.index, text)
-      }
-      await resetPending(u.tgId)
-    } catch (e: any) {
-      err = e?.message ?? 'Ошибка валидации'
-    } finally {
-      ;(ctx.state as any)._mergedText = undefined
-    }
-
-    const payload = await renderAddStoryTextScreen(ctx)
-    const postfix = err ? `❌ ${err}` : '✅ Сохранено.'
-    await updateMenu(ctx, `${payload.text}\n\n${postfix}`, payload.inline)
-
-    await tryDeleteUserMessages(ctx)
   })
 }

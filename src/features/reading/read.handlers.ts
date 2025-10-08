@@ -6,7 +6,6 @@ import {
   renderReadEndingScreen,
   userRank,
   paginateStory,
-  PAGE_LEN_TEXT,
   makePagerRow,
 } from "../../app/ui/screens.readStory";
 import { openOrPage, chooseEnding, dropActiveSession } from "./reading.service";
@@ -21,8 +20,13 @@ type StoryLean = {
   endings: EndingLean[];
   isPublished: boolean;
   minRank?: number;
-  coverUrl?: string;
+  coverUrl?: string | null;
 };
+
+
+function esc(s: string = ""): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 function extractFileId(coverUrl?: string | null): string | null {
   if (!coverUrl) return null;
@@ -56,7 +60,7 @@ async function sendOrReplaceWithPhoto(
   }
   const sent = await ctx.replyWithPhoto(fileId, {
     caption,
-    parse_mode: "Markdown",
+    parse_mode: "HTML",
     reply_markup: inline?.reply_markup ?? inline,
   });
   (ctx.state as any)?.rememberMessageId?.(sent.message_id);
@@ -65,7 +69,7 @@ async function sendOrReplaceWithPhoto(
 async function editPhotoCaption(ctx: MyContext, caption: string, inline?: any) {
   try {
     await ctx.editMessageCaption(caption, {
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
       reply_markup: inline?.reply_markup ?? inline,
     });
   } catch {
@@ -88,7 +92,7 @@ async function editPhotoCaption(ctx: MyContext, caption: string, inline?: any) {
 async function editOrReplyText(ctx: MyContext, text: string, inline?: any) {
   try {
     await ctx.editMessageText(text, {
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
       reply_markup: inline?.reply_markup ?? inline,
     });
   } catch {
@@ -103,7 +107,7 @@ async function editOrReplyText(ctx: MyContext, text: string, inline?: any) {
       } catch {}
     }
     const sent = await ctx.reply(text, {
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
       reply_markup: inline?.reply_markup ?? inline,
     });
     (ctx.state as any)?.rememberMessageId?.(sent.message_id);
@@ -146,6 +150,7 @@ function buildStoryKeyboard(s: StoryLean, page: number, pages: number) {
   return Markup.inlineKeyboard(rows);
 }
 
+
 export function registerReadHandlers(bot: Telegraf<MyContext>) {
   bot.action(/^story:([^:]+)$/, async (ctx) => {
     await ctx.answerCbQuery();
@@ -168,7 +173,9 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     if ((s.minRank ?? 0) > ur) {
       return editOrReplyText(
         ctx,
-        `★ Эта история доступна только подписчикам.\n\n*${s.title}*`,
+        `★ Эта история доступна только подписчикам.\n\n<b>${esc(
+          s.title
+        )}</b>`,
         Markup.inlineKeyboard([
           [Markup.button.callback("↩︎ К списку", "read_stories")],
         ])
@@ -180,9 +187,11 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     const pages = Math.max(1, parts.length);
     const page = 0;
 
-    const titleLine = `*${s.title}*${(s.minRank ?? 0) >= 1 ? "  ★" : ""}`;
-    const header = pages > 1 ? `_(страница ${page + 1}/${pages})_\n\n` : "";
-    const body = parts[page] || "";
+    const titleLine = `<b>${esc(s.title)}</b>${
+      (s.minRank ?? 0) >= 1 ? "  ★" : ""
+    }`;
+    const header = pages > 1 ? `<i>(страница ${page + 1}/${pages})</i>\n\n` : "";
+    const body = esc(parts[page] || "");
     const text = `${titleLine}\n\n${header}${body}`;
 
     const kb = buildStoryKeyboard(s, page, pages);
@@ -216,10 +225,13 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     const parts = paginateStory(s.text || "", !!coverId);
     const pages = Math.max(1, parts.length);
     if (page > pages - 1) page = pages - 1;
+    if (page < 0) page = 0;
 
-    const titleLine = `*${s.title}*${(s.minRank ?? 0) >= 1 ? "  ★" : ""}`;
-    const header = pages > 1 ? `_(страница ${page + 1}/${pages})_\n\n` : "";
-    const body = parts[page] || "";
+    const titleLine = `<b>${esc(s.title)}</b>${
+      (s.minRank ?? 0) >= 1 ? "  ★" : ""
+    }`;
+    const header = pages > 1 ? `<i>(страница ${page + 1}/${pages})</i>\n\n` : "";
+    const body = esc(parts[page] || "");
     const text = `${titleLine}\n\n${header}${body}`;
 
     const kb = buildStoryKeyboard(s, page, pages);
@@ -254,13 +266,15 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     }
 
     const { text, inline } = await renderReadEndingScreen(ctx);
-    return editOrReplyText(ctx, text, inline);
+    const safe = esc(text);
+    return editOrReplyText(ctx, safe, inline);
   });
 
   bot.action(/^read:end:([^:]+):(\d+):p:(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
     const { text, inline } = await renderReadEndingScreen(ctx);
-    return editOrReplyText(ctx, text, inline);
+    const safe = esc(text);
+    return editOrReplyText(ctx, safe, inline);
   });
 
   bot.action(/^read:list_from:([^:]+)$/, async (ctx) => {
