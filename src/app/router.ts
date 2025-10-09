@@ -6,6 +6,9 @@ import { registerCoverActions } from '../features/stories/cover.actions';
 import { registerReadHandlers } from '../features/reading/read.handlers';
 import { registerDraftInputCollector } from '../features/stories/addStoryText.collector';
 import { registerDraftFinishHandlers } from '../features/stories/addStoryText.finish';
+import { registerFileImportActions } from '../features/stories/fileImport.actions';
+import { registerAdminDeleteHandlers } from '../features/stories/adminDelete.handlers';
+import { registerAdminCoverHandlers } from '../features/stories/adminCover.handlers';
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -56,5 +59,8 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   registerDraftInputCollector(bot)
   registerDraftFinishHandlers(bot)
   registerCoverActions(bot)
+  registerFileImportActions(bot)
+  registerAdminDeleteHandlers(bot)
+  registerAdminCoverHandlers(bot)
 
 }

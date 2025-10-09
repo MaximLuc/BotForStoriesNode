@@ -50,10 +50,11 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     return {
       text: 'Админ-панель (демо)',
       inline: Markup.inlineKeyboard([
-        [Markup.button.callback('Истории', 'admin:stories')],
         [Markup.button.callback('🧑‍💻СТАТИСТИКА🧑‍💻', 'admin:statistics')],
-        [Markup.button.callback('Обложки', 'admin:cover')],
+        [Markup.button.callback('Обложки', 'admin:cover_list')],
         [Markup.button.callback('📜ДОБАВИТЬ ИСТОРИЮ📜', 'admin:add_story_text')],
+        [Markup.button.callback('📨Добавить файл📨', 'admin:import_file')],
+        [Markup.button.callback('🗑Удалить историю🗑', 'admin:delete_list')],
         [Markup.button.callback('Назад', 'main')],
       ]),
     }

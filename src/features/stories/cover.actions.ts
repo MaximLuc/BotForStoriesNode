@@ -7,7 +7,6 @@ import {
   setPendingCover,
   getPendingCover,
   clearPendingCover,
-  sweepPendingCovers,
 } from "./cover.state";
 
 async function updateMenu(ctx: MyContext, text: string, inline?: any) {
@@ -16,10 +15,15 @@ async function updateMenu(ctx: MyContext, text: string, inline?: any) {
       ? inline
       : { reply_markup: inline }
     : undefined;
+
   if (ctx.callbackQuery && "message" in ctx.callbackQuery) {
-    await ctx.editMessageText(text, { parse_mode: "Markdown", ...kb });
-    return;
+    try {
+      await ctx.editMessageText(text, { parse_mode: "Markdown", ...kb });
+      return;
+    } catch {
+    }
   }
+
   const chatId = ctx.chat?.id;
   if (chatId) {
     const lastId = getLastMessageId(chatId);
@@ -30,9 +34,11 @@ async function updateMenu(ctx: MyContext, text: string, inline?: any) {
           ...kb,
         });
         return;
-      } catch {}
+      } catch {
+      }
     }
   }
+
   const sent = await ctx.reply(text, { parse_mode: "Markdown", ...kb });
   (ctx.state as any)?.rememberMessageId?.(sent.message_id);
 }
@@ -44,7 +50,7 @@ export function registerCoverActions(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery();
     await updateMenu(
       ctx,
-      "🖼 Отправьте *изображение* как фото или документ (jpeg/png/webp).",
+      "🖼 Отправьте *изображение* (jpeg/png/webp) **как фото**. Документами не принимаем.",
       Markup.inlineKeyboard([
         [{ text: "⬅️ Отмена", callback_data: "cover:cancel" }],
       ])
@@ -64,30 +70,25 @@ export function registerCoverActions(bot: Telegraf<MyContext>) {
   });
 
   bot.action(/^cover:delete:(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
     const storyId = String(ctx.match[1]);
-    await ctx.answerCbQuery("Удаление...");
 
     try {
       await Story.updateOne({ _id: storyId }, { $unset: { coverUrl: 1 } });
-      if (ctx.state.user?.tgId) clearPendingCover(ctx.state.user.tgId);
+      clearPendingCover(ctx.state.user!.tgId);
 
       await updateMenu(
         ctx,
         "✅ Обложка удалена.",
         Markup.inlineKeyboard([
+          [{ text: "➕ Добавить обложку", callback_data: `cover:add:${storyId}` }],
           [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
-          [
-            {
-              text: "➕ Обновить обложку",
-              callback_data: `cover:add:${storyId}`,
-            },
-          ],
         ])
       );
-    } catch (e) {
+    } catch {
       await updateMenu(
         ctx,
-        "❌ Не удалось удалить обложку. Попробуйте через меню админа.",
+        "❌ Ошибка при удалении обложки.",
         Markup.inlineKeyboard([
           [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
         ])
@@ -103,47 +104,55 @@ export function registerCoverActions(bot: Telegraf<MyContext>) {
     if (!storyId) return next();
 
     const m: any = ctx.message;
-    const hasPhoto = Array.isArray(m?.photo) && m.photo.length;
-    const isImageDoc =
-      m?.document &&
-      /^image\/(jpeg|jpg|png|webp)$/i.test(String(m.document.mime_type || ""));
+    const msgId: number | undefined = m?.message_id;
 
-    if (!hasPhoto && !isImageDoc) return next();
+    const hasPhoto = Array.isArray(m?.photo) && m.photo.length > 0;
+    const isDocument = !!m?.document;
 
-    const msgId = m?.message_id;
-    const fileId = hasPhoto
-      ? m.photo[m.photo.length - 1].file_id
-      : m.document.file_id;
-
-    const tryDelete = async () => {
-      if (msgId)
-        try {
-          await ctx.deleteMessage(msgId);
-        } catch {}
+    const deleteUserMsg = async () => {
+      if (!msgId) return;
+      try {
+        await ctx.deleteMessage(msgId);
+      } catch {}
     };
+
+    if (isDocument && !hasPhoto) {
+      await deleteUserMsg();
+      await updateMenu(
+        ctx,
+        "⚠️ Пришлите изображение *как фото*, не файлом.",
+        Markup.inlineKeyboard([
+          [{ text: "⬅️ Отмена", callback_data: "cover:cancel" }],
+        ])
+      );
+      return;
+    }
+
+    if (!hasPhoto) {
+      return next();
+    }
+
+    const fileId: string = m.photo[m.photo.length - 1].file_id;
 
     try {
       await Story.updateOne(
         { _id: storyId },
         { $set: { coverUrl: `tg:${fileId}` } }
       );
+
       clearPendingCover(tgId);
-      await tryDelete();
+      await deleteUserMsg();
+
       await updateMenu(
         ctx,
-        "✅ Обложка сохранена.",
+        "✅ Обложка сохранена!",
         Markup.inlineKeyboard([
+          [{ text: "🗑 Удалить обложку", callback_data: `cover:delete:${storyId}` }],
           [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
-          [
-            {
-              text: "🗑 Удалить обложку",
-              callback_data: `cover:delete:${storyId}`,
-            },
-          ],
         ])
       );
     } catch {
-      await tryDelete();
+      await deleteUserMsg();
       await updateMenu(
         ctx,
         "❌ Не удалось сохранить обложку. Попробуйте ещё раз.",
