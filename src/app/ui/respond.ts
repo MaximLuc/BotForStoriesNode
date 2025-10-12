@@ -10,7 +10,8 @@ function isCallback(ctx: MyContext) {
 export async function safeEdit(
   ctx: MyContext,
   text: string,
-  inline?: ReturnType<typeof Markup.inlineKeyboard>
+  inline?: ReturnType<typeof Markup.inlineKeyboard>,
+  parseMode: 'Markdown' | 'HTML' = 'Markdown'
 ) {
   const cbq = (p?: string) => ctx.answerCbQuery(p).catch(() => {});
 
@@ -65,25 +66,26 @@ export async function safeEdit(
   }
 }
 
-type RespondOpts = {
-  inline?: ReturnType<typeof Markup.inlineKeyboard>;
-  setReplyKeyboard?: boolean;
-  replyNoticeText?: string;
-};
+export type RespondOpts = {
+  inline?: any
+  setReplyKeyboard?: any
+  replyNoticeText?: string
+  parseMode?: 'Markdown' | 'HTML'
+}
 
-export async function respond(
-  ctx: MyContext,
-  text: string,
-  opts?: RespondOpts
-) {
-  if (opts?.setReplyKeyboard) {
-    const kb = buildReplyMain(ctx.state.user).resize().persistent();
-    // await ctx.reply(opts.replyNoticeText ?? 'Меню обновлено', kb).catch(() => {})
-  }
+export async function respond(ctx: MyContext, text: string, opts: RespondOpts = {}) {
+  const kb = opts.inline ? (opts.inline.reply_markup ? opts.inline : { reply_markup: opts.inline }) : undefined
+  const parse_mode = opts.parseMode ?? 'Markdown' 
 
-  if (isCallback(ctx)) {
-    await ctx.answerCbQuery().catch(() => {});
-    return safeEdit(ctx, text, opts?.inline);
+  try {
+    await ctx.editMessageText(text, { parse_mode, ...kb })
+    return
+  } catch {}
+
+  const sent = await ctx.reply(text, { parse_mode, ...kb })
+  ;(ctx.state as any)?.rememberMessageId?.(sent.message_id)
+
+  if (opts.replyNoticeText) {
+    try { await ctx.reply(opts.replyNoticeText) } catch {}
   }
-  return (ctx.state as any).sendSingle(text, opts?.inline);
 }
