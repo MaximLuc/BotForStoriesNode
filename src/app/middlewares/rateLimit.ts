@@ -1,7 +1,7 @@
 import type { MiddlewareFn } from 'telegraf'
 import type { MyContext } from '../../shared/types'
 
-const LIMIT = 3
+const LIMIT = 5
 const WINDOW_MS = 2000
 const buckets = new Map<number, number[]>()
 let lastSweep = Date.now()

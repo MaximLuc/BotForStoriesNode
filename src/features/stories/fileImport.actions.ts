@@ -97,6 +97,8 @@ export function registerFileImportActions(bot: Telegraf<MyContext>) {
   })
 
   bot.on("document", async (ctx, next) => {
+
+    
     const u = ctx.state.user
     if (!u || !isAdmin(u)) return next()
     if (!getPendingImport(u.tgId)) return next()
