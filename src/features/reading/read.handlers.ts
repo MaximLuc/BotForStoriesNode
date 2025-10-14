@@ -23,7 +23,6 @@ type StoryLean = {
   coverUrl?: string | null;
 };
 
-
 function esc(s: string = ""): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -150,7 +149,6 @@ function buildStoryKeyboard(s: StoryLean, page: number, pages: number) {
   return Markup.inlineKeyboard(rows);
 }
 
-
 export function registerReadHandlers(bot: Telegraf<MyContext>) {
   bot.action(/^story:([^:]+)$/, async (ctx) => {
     await ctx.answerCbQuery();
@@ -173,9 +171,7 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     if ((s.minRank ?? 0) > ur) {
       return editOrReplyText(
         ctx,
-        `★ Эта история доступна только подписчикам.\n\n<b>${esc(
-          s.title
-        )}</b>`,
+        `★ Эта история доступна только подписчикам.\n\n<b>${esc(s.title)}</b>`,
         Markup.inlineKeyboard([
           [Markup.button.callback("↩︎ К списку", "read_stories")],
         ])
@@ -190,7 +186,8 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     const titleLine = `<b>${esc(s.title)}</b>${
       (s.minRank ?? 0) >= 1 ? "  ★" : ""
     }`;
-    const header = pages > 1 ? `<i>(страница ${page + 1}/${pages})</i>\n\n` : "";
+    const header =
+      pages > 1 ? `<i>(страница ${page + 1}/${pages})</i>\n\n` : "";
     const body = esc(parts[page] || "");
     const text = `${titleLine}\n\n${header}${body}`;
 
@@ -230,7 +227,8 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     const titleLine = `<b>${esc(s.title)}</b>${
       (s.minRank ?? 0) >= 1 ? "  ★" : ""
     }`;
-    const header = pages > 1 ? `<i>(страница ${page + 1}/${pages})</i>\n\n` : "";
+    const header =
+      pages > 1 ? `<i>(страница ${page + 1}/${pages})</i>\n\n` : "";
     const body = esc(parts[page] || "");
     const text = `${titleLine}\n\n${header}${body}`;
 

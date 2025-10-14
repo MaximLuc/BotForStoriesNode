@@ -20,8 +20,7 @@ async function updateMenu(ctx: MyContext, text: string, inline?: any) {
     try {
       await ctx.editMessageText(text, { parse_mode: "Markdown", ...kb });
       return;
-    } catch {
-    }
+    } catch {}
   }
 
   const chatId = ctx.chat?.id;
@@ -34,8 +33,7 @@ async function updateMenu(ctx: MyContext, text: string, inline?: any) {
           ...kb,
         });
         return;
-      } catch {
-      }
+      } catch {}
     }
   }
 
@@ -81,7 +79,12 @@ export function registerCoverActions(bot: Telegraf<MyContext>) {
         ctx,
         "✅ Обложка удалена.",
         Markup.inlineKeyboard([
-          [{ text: "➕ Добавить обложку", callback_data: `cover:add:${storyId}` }],
+          [
+            {
+              text: "➕ Добавить обложку",
+              callback_data: `cover:add:${storyId}`,
+            },
+          ],
           [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
         ])
       );
@@ -147,7 +150,12 @@ export function registerCoverActions(bot: Telegraf<MyContext>) {
         ctx,
         "✅ Обложка сохранена!",
         Markup.inlineKeyboard([
-          [{ text: "🗑 Удалить обложку", callback_data: `cover:delete:${storyId}` }],
+          [
+            {
+              text: "🗑 Удалить обложку",
+              callback_data: `cover:delete:${storyId}`,
+            },
+          ],
           [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
         ])
       );

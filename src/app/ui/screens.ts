@@ -1,87 +1,131 @@
-import type { MyContext } from '../../shared/types'
-import { buildInlineMain } from './menus'
-import { Markup } from 'telegraf'
-import { isAdmin } from '../../shared/utils'
-import { renderAddStoryTextScreen } from './screens.addStoryText'
-import { renderReadStoriesScreen } from './screens.readStories'
+import type { MyContext } from "../../shared/types";
+import { buildInlineMain } from "./menus";
+import { Markup } from "telegraf";
+import { isAdmin, isPremium } from "../../shared/utils";
+import { renderAddStoryTextScreen } from "./screens.addStoryText";
+import { renderReadStoriesScreen } from "./screens.readStories";
+import { renderProfileUserStatsScreen } from "./screens.profileStats";
+import { renderAdminStatsScreen } from "./screens.adminStats";
 
 export type ScreenId =
-  | 'main'
-  | 'profile'
-  | 'admin'
-  | 'storiesList'
-  | 'statistics'
-  | 'setCover'
-  | 'addStoryText'
-  | 'readStories'
-
+  | "main"
+  | "profile"
+  | "profileSubscription"
+  | "profileUserStats"
+  | "admin"
+  | "storiesList"
+  | "statistics"
+  | "setCover"
+  | "addStoryText"
+  | "readStories";
 
 export type ScreenPayload = {
-  text: string
-  inline?: ReturnType<typeof Markup.inlineKeyboard>
-  setReplyKeyboard?: boolean
-  replyNoticeText?: string
-}
+  text: string;
+  inline?: ReturnType<typeof Markup.inlineKeyboard>;
+  setReplyKeyboard?: boolean;
+  replyNoticeText?: string;
+  parseMode?: "Markdown" | "HTML";
+};
 
-type ScreenRenderer = (ctx: MyContext) => Promise<ScreenPayload> | ScreenPayload
+type ScreenRenderer = (
+  ctx: MyContext
+) => Promise<ScreenPayload> | ScreenPayload;
+
+function formatDate(d?: string | number | Date) {
+  if (!d) return "-";
+  const dt = new Date(d);
+  return `${String(dt.getDate()).padStart(2, "0")}.${String(
+    dt.getMonth() + 1
+  ).padStart(2, "0")}.${dt.getFullYear()}`;
+}
 
 const screens: Record<ScreenId, ScreenRenderer> = {
   main: (ctx) => ({
-    text: `Добро пожаловать в (название бота), ${ctx.from?.first_name || 'дорогой подписчик!'}!  В этом боте ты можешь прочитать уникальные истории, финал которых зависит только от твоего выбора. Приятного пользования🌸`,
+    text: `Добро пожаловать в (название бота), ${
+      ctx.from?.first_name || "дорогой подписчик!"
+    }!  В этом боте ты можешь прочитать уникальные истории, финал которых зависит только от твоего выбора. Приятного пользования🌸`,
     inline: buildInlineMain(ctx.state.user),
     setReplyKeyboard: true,
-    replyNoticeText: '',
+    replyNoticeText: "",
   }),
 
-  profile: () => ({
-    text: 'Твой профиль (демо)',
+  profile: (ctx) => ({
+    text: `Твой профиль\n\nЗдесь ты можешь посмотреть статус подписки и личную статистику.`,
     inline: Markup.inlineKeyboard([
-        [Markup.button.callback('Назад', 'main')],
+      [
+        Markup.button.callback("Подписка", "profile:subscription"),
+        Markup.button.callback("Статистика", "profile:statistics"),
+      ],
+      [Markup.button.callback("Назад", "main")],
     ]),
   }),
+
+  profileSubscription: (ctx) => {
+    const u = ctx.state.user;
+    const premium = isPremium(u);
+    const expiresAt = (u as any)?.premiumUntil;
+    const base = premium
+      ? `✅ У тебя активная подписка.\nДействует до: <b>${formatDate(
+          expiresAt
+        )}</b>.`
+      : `❌ Подписка не активна.`;
+
+    return {
+      text: `${base}\n\nПодписка открывает дополнительные истории и будущие фичи.`,
+      inline: Markup.inlineKeyboard([
+        [Markup.button.callback("↩︎ В профиль", "profile")],
+        [Markup.button.callback("🏠 На главную", "main")],
+      ]),
+    };
+  },
 
   admin: (ctx) => {
     if (!ctx.state.user || !isAdmin(ctx.state.user)) {
       return {
-        text: 'Доступ только для админа.',
+        text: "Доступ только для админа.",
         inline: buildInlineMain(undefined),
-      }
+      };
     }
     return {
-      text: 'Админ-панель (демо)',
+      text: "Админ-панель (демо)",
       inline: Markup.inlineKeyboard([
-        [Markup.button.callback('🧑‍💻СТАТИСТИКА🧑‍💻', 'admin:statistics')],
-        [Markup.button.callback('Обложки', 'admin:cover_list')],
-        [Markup.button.callback('📜ДОБАВИТЬ ИСТОРИЮ📜', 'admin:add_story_text')],
-        [Markup.button.callback('📨Добавить файл📨', 'admin:import_file')],
-        [Markup.button.callback('🗑Удалить историю🗑', 'admin:delete_list')],
-        [Markup.button.callback('Назад', 'main')],
+        [Markup.button.callback("🧑‍💻СТАТИСТИКА🧑‍💻", "admin:statistics")],
+        [Markup.button.callback("Обложки", "admin:cover_list")],
+        [
+          Markup.button.callback(
+            "📜ДОБАВИТЬ ИСТОРИЮ📜",
+            "admin:add_story_text"
+          ),
+        ],
+        [Markup.button.callback("📨Добавить файл📨", "admin:import_file")],
+        [Markup.button.callback("🗑Удалить историю🗑", "admin:delete_list")],
+        [Markup.button.callback("Назад", "main")],
       ]),
-    }
+    };
   },
 
   storiesList: () => ({
-    text: 'Список историй (заглушка)',
-    inline: Markup.inlineKeyboard([[Markup.button.callback('Назад', 'admin')]]),
+    text: "Список историй (заглушка)",
+    inline: Markup.inlineKeyboard([[Markup.button.callback("Назад", "admin")]]),
   }),
 
-  statistics:()=>({
-    text: 'Статистика (заглушка)',
-    inline: Markup.inlineKeyboard([[Markup.button.callback('Назад', 'admin')]]),
-  }),
-
-  setCover:()=>({
-    text: 'Установить обложку (заглушка)',
-    inline: Markup.inlineKeyboard([[Markup.button.callback('Назад', 'admin')]]),
+  setCover: () => ({
+    text: "Установить обложку (заглушка)",
+    inline: Markup.inlineKeyboard([[Markup.button.callback("Назад", "admin")]]),
   }),
 
   addStoryText: (ctx) => renderAddStoryTextScreen(ctx),
-  
+
   readStories: (ctx) => renderReadStoriesScreen(ctx),
-}
+
+  profileUserStats: (ctx) => renderProfileUserStatsScreen(ctx),
+
+  statistics: (ctx) => renderAdminStatsScreen(ctx),
+};
 
 export function getScreen(ctx: MyContext, id: ScreenId): ScreenPayload {
-  const r = screens[id]
-  if (!r) return { text: 'Экран не найден', inline: buildInlineMain(undefined) }
-  return r(ctx) as ScreenPayload
+  const r = screens[id];
+  if (!r)
+    return { text: "Экран не найден", inline: buildInlineMain(undefined) };
+  return r(ctx) as ScreenPayload;
 }
