@@ -15,7 +15,6 @@ export type ScreenId =
   | "admin"
   | "storiesList"
   | "statistics"
-  | "setCover"
   | "addStoryText"
   | "readStories";
 
@@ -99,6 +98,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
         ],
         [Markup.button.callback("📨Добавить файл📨", "admin:import_file")],
         [Markup.button.callback("🗑Удалить историю🗑", "admin:delete_list")],
+        [Markup.button.callback('📣 Рассылка', 'admin:broadcast')],
         [Markup.button.callback("Назад", "main")],
       ]),
     };
@@ -106,11 +106,6 @@ const screens: Record<ScreenId, ScreenRenderer> = {
 
   storiesList: () => ({
     text: "Список историй (заглушка)",
-    inline: Markup.inlineKeyboard([[Markup.button.callback("Назад", "admin")]]),
-  }),
-
-  setCover: () => ({
-    text: "Установить обложку (заглушка)",
     inline: Markup.inlineKeyboard([[Markup.button.callback("Назад", "admin")]]),
   }),
 

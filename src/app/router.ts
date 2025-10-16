@@ -1,4 +1,3 @@
-// router.ts
 import type { Telegraf } from "telegraf";
 import type { MyContext } from "../shared/types";
 import { navigate } from "./ui/navigate";
@@ -10,6 +9,8 @@ import { registerDraftFinishHandlers } from "../features/stories/addStoryText.fi
 import { registerFileImportActions } from "../features/stories/fileImport.actions";
 import { registerAdminDeleteHandlers } from "../features/stories/adminDelete.handlers";
 import { registerAdminCoverHandlers } from "../features/stories/adminCover.handlers";
+import { registerBroadcastActions } from "../features/broadcast/broadcast.actions";
+import { registerBroadcastSweeper } from "../features/broadcast/broadcast.sweeper";
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -50,7 +51,6 @@ export function registerRouter(bot: Telegraf<MyContext>) {
 
   bot.action("admin:stories", async (ctx) => navigate(ctx, "storiesList"));
   bot.action("admin:statistics", async (ctx) => navigate(ctx, "statistics"));
-  bot.action("admin:cover", async (ctx) => navigate(ctx, "setCover"));
 
   bindDual(
     bot,
@@ -70,10 +70,6 @@ export function registerRouter(bot: Telegraf<MyContext>) {
     );
   });
 
-  bot.help(async (ctx) =>
-    ctx.reply("Привет этот бот умеет рассказывать истории")
-  );
-
   bot.catch((err, ctx) => {
     console.error("Bot error for update", ctx.update.update_id, err);
   });
@@ -86,4 +82,6 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   registerFileImportActions(bot);
   registerAdminDeleteHandlers(bot);
   registerAdminCoverHandlers(bot);
+  registerBroadcastActions(bot)
+  registerBroadcastSweeper(bot)
 }
