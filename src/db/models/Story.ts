@@ -61,7 +61,6 @@ const StorySchema = new mongoose.Schema(
 
 StorySchema.index({ title: "text" });
 StorySchema.index({ isPublished: 1, createdAt: -1 });
-StorySchema.index({ minRank: 1 });
 
 export type StoryDoc = mongoose.InferSchemaType<typeof StorySchema>;
 export const Story =

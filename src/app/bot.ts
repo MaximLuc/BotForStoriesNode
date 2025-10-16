@@ -6,6 +6,7 @@ import { auth } from "./middlewares/auth";
 import { singleMessage } from "./middlewares/singleMessage";
 import { coverPendingGuard } from "./middlewares/coverPendingGuard";
 import { longTextMerge } from "./middlewares/longTextMerge";
+import { checkSubscription } from "./middlewares/checkSubscription";
 
 export function initBot(token: string) {
   const bot = new Telegraf(token);
@@ -15,6 +16,7 @@ export function initBot(token: string) {
   bot.use(singleMessage);
   bot.use(coverPendingGuard);
   bot.use(longTextMerge);
+  bot.use(checkSubscription)
   registerRouter(bot);
 
   return { bot };

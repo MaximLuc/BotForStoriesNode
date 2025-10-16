@@ -11,6 +11,8 @@ import { registerAdminDeleteHandlers } from "../features/stories/adminDelete.han
 import { registerAdminCoverHandlers } from "../features/stories/adminCover.handlers";
 import { registerBroadcastActions } from "../features/broadcast/broadcast.actions";
 import { registerBroadcastSweeper } from "../features/broadcast/broadcast.sweeper";
+import { registerSubscriptionAdminActions } from "../features/subscription/subscription.actions";
+import { registerSubscriptionUserActions } from "../features/subscription/subscription.user.actions";
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -84,4 +86,6 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   registerAdminCoverHandlers(bot);
   registerBroadcastActions(bot)
   registerBroadcastSweeper(bot)
+  registerSubscriptionAdminActions(bot)
+  registerSubscriptionUserActions(bot)
 }

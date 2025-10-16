@@ -99,6 +99,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
         [Markup.button.callback("📨Добавить файл📨", "admin:import_file")],
         [Markup.button.callback("🗑Удалить историю🗑", "admin:delete_list")],
         [Markup.button.callback('📣 Рассылка', 'admin:broadcast')],
+        [Markup.button.callback("📢 Каналы", "admin:channels")],
         [Markup.button.callback("Назад", "main")],
       ]),
     };
