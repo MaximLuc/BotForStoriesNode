@@ -1,4 +1,5 @@
-import type { Telegraf } from "telegraf";
+import type { Telegraf} from "telegraf";
+import { Types } from "mongoose";   
 import type { MyContext } from "../shared/types";
 import { navigate } from "./ui/navigate";
 import { registerAddStoryTextActions } from "../features/stories/addStoryText.actions";
@@ -13,6 +14,9 @@ import { registerBroadcastActions } from "../features/broadcast/broadcast.action
 import { registerBroadcastSweeper } from "../features/broadcast/broadcast.sweeper";
 import { registerSubscriptionAdminActions } from "../features/subscription/subscription.actions";
 import { registerSubscriptionUserActions } from "../features/subscription/subscription.user.actions";
+import { registerBuyEndingActions } from "../features/reading/buyEnding.actions";
+import { isAdmin } from "../shared/utils";
+import { addTokens } from "../features/tokens/wallet.service";
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -76,6 +80,15 @@ export function registerRouter(bot: Telegraf<MyContext>) {
     console.error("Bot error for update", ctx.update.update_id, err);
   });
 
+  bot.command("give_tokens", async (ctx) => {
+  if (!ctx.state.user || !isAdmin(ctx.state.user)) return ctx.reply("Только для админа")
+  const parts = (ctx.message as any).text.trim().split(/\s+/)
+  const amount = Math.max(1, Number(parts[1] ?? 1)) 
+  const userId = (ctx.state.user as any)?._id as Types.ObjectId
+  await addTokens(userId, amount) 
+  return ctx.reply(`Выдано ${amount} токен(ов).`)
+})
+
   registerReadHandlers(bot);
   registerAddStoryTextActions(bot);
   registerDraftInputCollector(bot);
@@ -88,4 +101,5 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   registerBroadcastSweeper(bot)
   registerSubscriptionAdminActions(bot)
   registerSubscriptionUserActions(bot)
+  registerBuyEndingActions(bot)
 }

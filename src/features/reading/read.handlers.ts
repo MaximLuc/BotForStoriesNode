@@ -245,14 +245,16 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     }
   });
 
-  bot.action(/^read:choose:([^:]+):(\d+)$/, async (ctx) => {
+   bot.action(/^read:choose:([^:]+):(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
     const storyId = String(ctx.match[1]);
     const idx = Number(ctx.match[2]);
 
-    await chooseEnding(ctx, storyId, idx);
+    const u = ctx.state.user as any
+    const userId = u?._id
+    const tgId = u?.tgId
 
-    const s = await Story.findById(storyId).lean<StoryLean>();
+    const s = await Story.findById(storyId)
     if (!s || !s.isPublished) {
       return editOrReplyText(
         ctx,
@@ -262,10 +264,45 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
         ])
       );
     }
+    const ending = s.endings?.[idx]
+    if (!ending) {
+      return editOrReplyText(ctx, "Вариант недоступен.", Markup.inlineKeyboard([[Markup.button.callback("↩︎ Назад", `story:${storyId}`)]]))
+    }
+    if (!userId) {
+      return editOrReplyText(ctx, "Ошибка пользователя.", Markup.inlineKeyboard([[Markup.button.callback("↩︎ Назад", `story:${storyId}`)]]))
+    }
 
-    const { text, inline } = await renderReadEndingScreen(ctx);
-    const safe = esc(text);
-    return editOrReplyText(ctx, safe, inline);
+    const { Types } = await import("mongoose")
+    const { isAllPremium, hasAccessToEnding, tryLockFirstChoice } = await import("./endingChoice.service")
+
+    const premiumAll = isAllPremium(ctx)
+    if (premiumAll) {
+      await chooseEnding(ctx, storyId, idx)
+      const { text, inline } = await renderReadEndingScreen(ctx);
+      const safe = esc(text);
+      return editOrReplyText(ctx, safe, inline);
+    }
+
+    const access = await hasAccessToEnding(ctx, userId, s._id, ending._id)
+
+    if (access === "chosen" || access === "extra") {
+      await chooseEnding(ctx, storyId, idx)
+      const { text, inline } = await renderReadEndingScreen(ctx);
+      const safe = esc(text);
+      return editOrReplyText(ctx, safe, inline);
+    }
+
+    const lockRes = await tryLockFirstChoice(userId as any, tgId, s._id, ending._id)
+    if (lockRes === "lockedNow" || lockRes === "alreadySame") {
+      await chooseEnding(ctx, storyId, idx)
+      const { text, inline } = await renderReadEndingScreen(ctx);
+      const safe = esc(text);
+      return editOrReplyText(ctx, safe, inline);
+    }
+
+    const { renderBuyEndingConfirmScreen } = await import("../../app/ui/screens.buyEnding")
+    const scr = await renderBuyEndingConfirmScreen(ctx, storyId, idx, userId)
+    return editOrReplyText(ctx, scr.text, scr.inline)
   });
 
   bot.action(/^read:end:([^:]+):(\d+):p:(\d+)$/, async (ctx) => {

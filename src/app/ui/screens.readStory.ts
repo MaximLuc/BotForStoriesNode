@@ -3,6 +3,7 @@ import { Markup } from "telegraf";
 import type { ScreenPayload } from "./screens";
 import { Story } from "../../db/models/Story";
 import type { InlineKeyboardButton } from "telegraf/types";
+import { Types } from "mongoose";
 
 type EndingLean = {
   _id: any;
@@ -206,31 +207,51 @@ export async function renderReadStoryScreen(
 }
 
 export async function renderReadEndingScreen(
-  ctx: MyContext
+  ctx: MyContext,
+  opts?: { storyId?: string; endingIndex?: number; page?: number }
 ): Promise<ScreenPayload> {
-  const raw =
-    typeof ctx.callbackQuery === "object" && "data" in (ctx.callbackQuery ?? {})
-      ? String((ctx.callbackQuery as any).data)
-      : "";
+  let storyId: string | undefined = opts?.storyId;
+  let idx: number | undefined = opts?.endingIndex;
+  let page: number = typeof opts?.page === "number" ? opts!.page! : 0;
 
-  let storyId = "";
-  let idx = 0;
-  let page = 0;
+  if (!storyId || typeof idx !== "number") {
+    const raw =
+      typeof ctx.callbackQuery === "object" && "data" in (ctx.callbackQuery ?? {})
+        ? String((ctx.callbackQuery as any).data)
+        : "";
 
-  const mChoose = raw.match(/^read:choose:([^:]+):(\d+)$/);
-  const mEnd = raw.match(/^read:end:([^:]+):(\d+):p:(\d+)$/);
+    const mChoose = raw.match(/^read:choose:([^:]+):(\d+)$/);
+    const mEnd = raw.match(/^read:end:([^:]+):(\d+):p:(\d+)$/);
 
-  if (mEnd) {
-    storyId = mEnd[1];
-    idx = Math.max(0, Number(mEnd[2]) || 0);
-    page = Math.max(0, Number(mEnd[3]) || 0);
-  } else if (mChoose) {
-    storyId = mChoose[1];
-    idx = Math.max(0, Number(mChoose[2]) || 0);
-    page = 0;
-  } else {
-    storyId = (ctx as any).state?.storyId ?? "";
-    idx = Number((ctx as any).state?.endingIndex ?? 0);
+    if (mEnd) {
+      storyId = storyId ?? mEnd[1];
+      idx = typeof idx === "number" ? idx : Math.max(0, Number(mEnd[2]) || 0);
+      page = Math.max(0, Number(mEnd[3]) || 0);
+    } else if (mChoose) {
+      storyId = storyId ?? mChoose[1];
+      idx = typeof idx === "number" ? idx : Math.max(0, Number(mChoose[2]) || 0);
+      page = 0;
+    } else {
+      storyId = storyId ?? (ctx as any).state?.storyId ?? "";
+      idx = typeof idx === "number" ? idx : Number((ctx as any).state?.endingIndex ?? 0);
+    }
+  }
+
+  if (!storyId || !Types.ObjectId.isValid(storyId)) {
+    return {
+      text: "История недоступна.",
+      inline: Markup.inlineKeyboard([
+        [Markup.button.callback("↩︎ К списку", "read_stories")],
+      ]),
+    };
+  }
+  if (typeof idx !== "number" || idx < 0) {
+    return {
+      text: "Окончание не найдено.",
+      inline: Markup.inlineKeyboard([
+        [Markup.button.callback("↩︎ К истории", `story:${storyId}`)],
+      ]),
+    };
   }
 
   const s = await Story.findById(storyId).lean<StoryLean>();
@@ -255,9 +276,7 @@ export async function renderReadEndingScreen(
   const ur = userRank(ctx);
   if ((ending.minRank ?? 0) > ur) {
     return {
-      text: `★ Это окончание доступно только подписчикам.\n\n*${s.title}* → _${
-        ending.title ?? "Окончание"
-      }_`,
+      text: `★ Это окончание доступно только подписчикам.\n\n*${s.title}* → _${ending.title ?? "Окончание"}_`,
       inline: Markup.inlineKeyboard([
         [Markup.button.callback("⭐ Оформить подписку", "subscribe")],
         [
