@@ -1,5 +1,5 @@
-import type { Telegraf} from "telegraf";
-import { Types } from "mongoose";   
+import type { Telegraf } from "telegraf";
+import { Types } from "mongoose";
 import type { MyContext } from "../shared/types";
 import { navigate } from "./ui/navigate";
 import { registerAddStoryTextActions } from "../features/stories/addStoryText.actions";
@@ -28,7 +28,6 @@ function bindDual(
 }
 
 export function registerRouter(bot: Telegraf<MyContext>) {
-
   bot.start(async (ctx) => navigate(ctx, "main"));
 
   bindDual(bot, { text: "Меню", action: "main" }, async (ctx) =>
@@ -69,26 +68,72 @@ export function registerRouter(bot: Telegraf<MyContext>) {
     navigate(ctx, "readStories")
   );
 
-  bot.command("whoami", (ctx) => {
-    const u = ctx.state.user;
-    if (!u) return ctx.reply("пользователь не найден");
-    return ctx.reply(
-      `id: ${u.tgId}\nusername: ${u.username ?? "-"}\nrole: ${u.role}`
-    );
+  bot.action("support", async (ctx) => {
+    await ctx.answerCbQuery();
+
+    const text = `
+🛠 *Техническая поддержка*
+
+Бот находится на стадии *тестирования*, возможны ошибки и перебои в работе.
+
+Если что-то не работает или хочешь оставить отзыв —
+напиши в поддержку: [@tema_cl](https://t.me/tema_cl)
+`;
+
+    await ctx.editMessageText(text.trim(), {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [[{ text: "↩︎ Назад в меню", callback_data: "main" }]],
+      },
+      link_preview_options: { is_disabled: true },
+    });
   });
+
+  bot.action("help", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const text = `
+ℹ️ *Помощь и информация о боте*
+
+Добро пожаловать в бота *Юля С "Bot"*!  
+Здесь ты можешь читать интерактивные истории с разными концовками.  
+Некоторые концовки доступны только подписчикам ⭐
+
+📚 *Основные разделы:*
+- *ВСЕ ИСТОРИИ* — список доступных историй.
+- *Профиль* — показывает твою роль, количество токенов и статистику.
+- *Админ* — раздел для управления историями (только для админов).
+- *Техподдержка* — если что-то не работает, можно написать в поддержку.
+
+🧠 Совет: за каждое действие бот старается сохранять твой прогресс,  
+так что можно вернуться к чтению позже без потери данных.
+`;
+
+  await ctx.editMessageText(text.trim(), {
+    parse_mode: "Markdown",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "📞 Техподдержка", callback_data: "support" }],
+        [{ text: "↩︎ Назад в меню", callback_data: "main" }],
+      ],
+    },
+    link_preview_options: { is_disabled: true },
+  });
+});
 
   bot.catch((err, ctx) => {
     console.error("Bot error for update", ctx.update.update_id, err);
   });
 
   bot.command("give_tokens", async (ctx) => {
-  if (!ctx.state.user || !isAdmin(ctx.state.user)) return ctx.reply("Только для админа")
-  const parts = (ctx.message as any).text.trim().split(/\s+/)
-  const amount = Math.max(1, Number(parts[1] ?? 1)) 
-  const userId = (ctx.state.user as any)?._id as Types.ObjectId
-  await addTokens(userId, amount) 
-  return ctx.reply(`Выдано ${amount} токен(ов).`)
-})
+    if (!ctx.state.user || !isAdmin(ctx.state.user))
+      return ctx.reply("Только для админа");
+    const parts = (ctx.message as any).text.trim().split(/\s+/);
+    const amount = Math.max(1, Number(parts[1] ?? 1));
+    const userId = (ctx.state.user as any)?._id as Types.ObjectId;
+    await addTokens(userId, amount);
+    return ctx.reply(`Выдано ${amount} токен(ов).`);
+  });
 
   registerReadHandlers(bot);
   registerAddStoryTextActions(bot);
@@ -98,9 +143,9 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   registerFileImportActions(bot);
   registerAdminDeleteHandlers(bot);
   registerAdminCoverHandlers(bot);
-  registerBroadcastActions(bot)
-  registerBroadcastSweeper(bot)
-  registerSubscriptionAdminActions(bot)
-  registerSubscriptionUserActions(bot)
-  registerBuyEndingActions(bot)
+  registerBroadcastActions(bot);
+  registerBroadcastSweeper(bot);
+  registerSubscriptionAdminActions(bot);
+  registerSubscriptionUserActions(bot);
+  registerBuyEndingActions(bot);
 }

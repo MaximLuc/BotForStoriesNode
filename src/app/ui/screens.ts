@@ -40,7 +40,7 @@ function formatDate(d?: string | number | Date) {
 
 const screens: Record<ScreenId, ScreenRenderer> = {
   main: (ctx) => ({
-    text: `Добро пожаловать в (название бота), ${
+    text: `Добро пожаловать в *Юля С "Bot"*, ${
       ctx.from?.first_name || "дорогой подписчик!"
     }!  В этом боте ты можешь прочитать уникальные истории, финал которых зависит только от твоего выбора. Приятного пользования🌸`,
     inline: buildInlineMain(ctx.state.user),
@@ -86,7 +86,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
       };
     }
     return {
-      text: "Админ-панель (демо)",
+      text: "Админ-панель",
       inline: Markup.inlineKeyboard([
         [Markup.button.callback("🧑‍💻СТАТИСТИКА🧑‍💻", "admin:statistics")],
         [Markup.button.callback("Обложки", "admin:cover_list")],
