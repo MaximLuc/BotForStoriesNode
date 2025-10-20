@@ -1,11 +1,13 @@
 import type { MiddlewareFn } from "telegraf";
 import type { MyContext } from "../../shared/types";
-import { User } from "../../db/models/User";
-import type { UserDoc } from "../../db/models/User";
+import { User, type UserDoc } from "../../db/models/User";
 import { cfg } from "../../shared/config";
+import { addTokens } from "../../features/tokens/wallet.service";
+import { Types } from "mongoose";
 
 const USER_TTL_MS = 90_000;
 const SWEEP_EVERY_MS = 60_000;
+const STARTER_TOKENS = 5;
 
 type CacheEntry = { user: UserDoc; expiresAt: number };
 const cache = new Map<number, CacheEntry>();
@@ -39,27 +41,52 @@ export const auth: MiddlewareFn<MyContext> = async (ctx, next) => {
   const tgId = ctx.from.id;
 
   const cached = cache.get(tgId);
-  if (
-    cached &&
-    cached.expiresAt > Date.now() &&
-    !isAdminRole(cached.user.role)
-  ) {
+  if (cached && cached.expiresAt > Date.now() && !isAdminRole(cached.user.role)) {
     ctx.state.user = cached.user;
     return next();
   }
 
-  let user = await User.findOne({ tgId });
+  const shouldBeAdmin = cfg.adminIds.includes(tgId);
 
-  if (!user) {
-    const firstName = ctx.from.first_name;
-    const username = ctx.from.username;
-    const shouldBeAdmin = cfg.adminIds.includes(tgId);
-    user = await User.create({
+  const upsertUpdate: any = {
+    $setOnInsert: {
       tgId,
-      firstName,
-      username,
-      role: shouldBeAdmin ? "admin" : undefined,
-    });
+      starterTokensGranted: false,
+    },
+    $set: {
+      firstName: ctx.from.first_name ?? "",
+      username: ctx.from.username ?? null,
+      ...(shouldBeAdmin ? { role: "admin" } : {}),
+    },
+  };
+
+  const userDoc = await User.findOneAndUpdate(
+    { tgId },
+    upsertUpdate,
+    { upsert: true, new: true } 
+  ).catch(async (e: any) => {
+    if (e?.code === 11000) {
+      return await User.findOne({ tgId });
+    }
+    throw e;
+  });
+
+  let user = userDoc as UserDoc | null;
+  if (!user) user = (await User.findOne({ tgId })) as UserDoc | null;
+  if (!user) return next();
+
+  if (!user.starterTokensGranted) {
+    const updated = await User.findOneAndUpdate(
+      { tgId, starterTokensGranted: false },
+      { $set: { starterTokensGranted: true } },
+      { new: true }
+    );
+    if (updated) {
+      await addTokens(updated._id as unknown as Types.ObjectId, STARTER_TOKENS);
+      user = updated as UserDoc;
+    } else {
+      user = (await User.findOne({ tgId })) as UserDoc;
+    }
   }
 
   if (!isAdminRole(user.role)) {

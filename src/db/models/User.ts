@@ -17,6 +17,8 @@ const UserSchema = new mongoose.Schema(
 
     premiumUntil: { type: Date, default: null },
     features: { type: [String], default: [] },
+
+    starterTokensGranted: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );

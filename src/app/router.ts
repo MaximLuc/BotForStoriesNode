@@ -28,6 +28,7 @@ function bindDual(
 }
 
 export function registerRouter(bot: Telegraf<MyContext>) {
+
   bot.start(async (ctx) => navigate(ctx, "main"));
 
   bindDual(bot, { text: "Меню", action: "main" }, async (ctx) =>
