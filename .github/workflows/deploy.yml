@@ -18,14 +18,20 @@ jobs:
           node-version: "22"
 
       - name: Install deps
-        run: npm ci
+        run: npm install
 
       - name: Build
         run: npm run build
 
       - name: Pack artefact
+        shell: bash
         run: |
-          tar -czf artefact.tar.gz dist package.json package-lock.json ecosystem.config.js
+          # добавим package-lock.json в архив, только если он есть
+          PKG_LOCK=""
+          if [ -f package-lock.json ]; then
+            PKG_LOCK="package-lock.json"
+          fi
+          tar -czf artefact.tar.gz dist package.json $PKG_LOCK ecosystem.config.js
 
       - name: Upload artefact to server
         uses: appleboy/scp-action@v0.1.7
@@ -47,6 +53,6 @@ jobs:
             cd /opt/tg-bot
             tar -xzf artefact.tar.gz
             rm -f artefact.tar.gz
-            npm ci --omit=dev
+            npm install --omit=dev
             pm2 startOrReload ecosystem.config.js --env production
             pm2 save
