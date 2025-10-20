@@ -1,0 +1,52 @@
+name: Deploy Bot
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Pack artefact
+        run: |
+          tar -czf artefact.tar.gz dist package.json package-lock.json ecosystem.config.js
+
+      - name: Upload artefact to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "artefact.tar.gz"
+          target: "/opt/tg-bot/"
+
+      - name: Unpack & install & reload pm2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/tg-bot
+            tar -xzf artefact.tar.gz
+            rm -f artefact.tar.gz
+            npm ci --omit=dev
+            pm2 startOrReload ecosystem.config.js --env production
+            pm2 save
