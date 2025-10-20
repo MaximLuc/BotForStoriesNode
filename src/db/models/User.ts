@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import type { Role } from "../../shared/constants";
-import { ROLE } from "../../shared/constants";
+import type { Role } from "../../shared/constants.js";
+import { ROLE } from "../../shared/constants.js";
 
 const UserSchema = new mongoose.Schema(
   {

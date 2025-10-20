@@ -17,21 +17,19 @@ const DraftEndingSchema = new Schema<DraftEnding>(
 
 const DraftStorySchema = new Schema(
   {
-    tgId: { type: Number, required: true, index: true },
+    tgId: { type: Number, required: true }, 
     title: { type: String },
     intro: { type: String },
     endings: { type: [DraftEndingSchema], default: [] },
     minRank: { type: Number, min: 0, max: 3, default: 0 },
     pendingInput: { type: Object, default: null },
-    updatedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
-DraftStorySchema.index({ tgId: 1 });
+DraftStorySchema.index({ tgId: 1 }, { unique: true });
 
-export type DraftStoryDoc = mongoose.InferSchemaType<
-  typeof DraftStorySchema
-> & { _id: any };
+export type DraftStoryDoc = mongoose.InferSchemaType<typeof DraftStorySchema> & { _id: any };
+
 export const DraftStory =
   mongoose.models.DraftStory || mongoose.model("DraftStory", DraftStorySchema);

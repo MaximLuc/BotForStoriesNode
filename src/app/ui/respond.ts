@@ -1,6 +1,6 @@
 import { Markup } from "telegraf";
 import type { InlineKeyboardMarkup } from "telegraf/types";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 
 function normalizeInline(
   inline?: ReturnType<typeof Markup.inlineKeyboard> | InlineKeyboardMarkup

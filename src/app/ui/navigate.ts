@@ -1,6 +1,6 @@
-import type { MyContext } from '../../shared/types'
-import { respond } from './respond'
-import { getScreen, type ScreenId } from './screens'
+import type { MyContext } from '../../shared/types.js'
+import { respond } from './respond.js'
+import { getScreen, type ScreenId } from './screens.js'
 
 export async function navigate(ctx: MyContext, id: ScreenId) {
   const payload = await getScreen(ctx, id)

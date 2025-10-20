@@ -1,10 +1,10 @@
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
 import {
   getOrCreateDraft,
   canCreate,
-} from "../../features/stories/draft.service";
-import type { DraftStoryDoc, DraftEnding } from "../../db/models/DraftStory";
+} from "../../features/stories/draft.service.js";
+import type { DraftStoryDoc, DraftEnding } from "../../db/models/DraftStory.js";
 import type { InlineKeyboardButton } from "telegraf/types";
 
 function preview(str?: string | null, words = 8) {

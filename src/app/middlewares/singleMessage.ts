@@ -1,5 +1,5 @@
 import type { MiddlewareFn } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 
 type Entry = { messageId: number; updatedAt: number };
 const lastByChat = new Map<number, Entry>();

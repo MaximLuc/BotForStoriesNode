@@ -1,11 +1,11 @@
 import type { Telegraf } from "telegraf";
 import { Markup } from "telegraf";
-import { ROLE } from "../../shared/constants";
-import { User } from "../../db/models/User";
-import { StoryReadSession } from "../../db/models/StoryReadSession";
-import { BroadcastMessage } from "../../db/models/BroadcastMessage";
-import { buildInlineMain } from "../../app/ui/menus";
-import { getLastMessageId } from "../../app/middlewares/singleMessage";
+import { ROLE } from "../../shared/constants.js";
+import { User } from "../../db/models/User.js";
+import { StoryReadSession } from "../../db/models/StoryReadSession.js";
+import { BroadcastMessage } from "../../db/models/BroadcastMessage.js";
+import { buildInlineMain } from "../../app/ui/menus.js";
+import { getLastMessageId } from "../../app/middlewares/singleMessage.js";
 
 type Audience = "all" | "premium" | "active30";
 type BType = "bulk" | "ad";

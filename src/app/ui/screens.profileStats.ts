@@ -1,11 +1,11 @@
 import type { InlineKeyboardMarkup } from "telegraf/types";
 import { Markup } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import {
   getUserStatsByTgId,
   getTopRereads,
   getTopEndingChoices,
-} from "../../features/stats/userStats.service";
+} from "../../features/stats/userStats.service.js";
 function fmtMs(ms?: number) {
   if (!ms || ms <= 0) return "-";
   const s = Math.round(ms / 1000);

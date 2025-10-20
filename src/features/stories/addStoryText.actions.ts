@@ -1,5 +1,5 @@
 import type { Telegraf } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
 import {
   getOrCreateDraft,
@@ -13,12 +13,12 @@ import {
   canCreate,
   setEndingAccess,
   setStoryAccess,
-} from "./draft.service";
-import type { DraftEnding } from "../../db/models/DraftStory";
-import { renderAddStoryTextScreen } from "../../app/ui/screens.addStoryText";
-import { getLastMessageId } from "../../app/middlewares/singleMessage";
-import { isAdmin } from "../../shared/utils";
-import { aggStart } from "./input.aggregator";
+} from "./draft.service.js";
+import type { DraftEnding } from "../../db/models/DraftStory.js";
+import { renderAddStoryTextScreen } from "../../app/ui/screens.addStoryText.js";
+import { getLastMessageId } from "../../app/middlewares/singleMessage.js";
+import { isAdmin } from "../../shared/utils.js";
+import { aggStart } from "./input.aggregator.js";
 
 let ACTIONS_REGISTERED = false;
 

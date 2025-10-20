@@ -1,22 +1,22 @@
 import type { Telegraf } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
-import { bufferToText, parseStoryFromText } from "./docText";
+import { bufferToText, parseStoryFromText } from "./docText.js";
 import {
   getOrCreateDraft,
   setField,
   setEndingTitle,
   setEndingText,
   resetPending,
-} from "./draft.service";
-import { renderAddStoryTextScreen } from "../../app/ui/screens.addStoryText";
-import { isAdmin } from "../../shared/utils";
+} from "./draft.service.js";
+import { renderAddStoryTextScreen } from "../../app/ui/screens.addStoryText.js";
+import { isAdmin } from "../../shared/utils.js";
 import {
   getPendingImport,
   setPendingImport,
   clearPendingImport,
-} from "./import.state";
-import { getLastMessageId } from "../../app/middlewares/singleMessage";
+} from "./import.state.js";
+import { getLastMessageId } from "../../app/middlewares/singleMessage.js";
 
 function html(s = "") {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

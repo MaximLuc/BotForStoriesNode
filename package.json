@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "nodemon",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "start:pm2": "pm2 start ecosystem.config.js --env production",
+    "restart:pm2": "pm2 reload ecosystem.config.js --env production"
   },
   "dependencies": {
     "chardet": "^2.1.0",

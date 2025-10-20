@@ -1,14 +1,14 @@
 import type { Telegraf } from "telegraf"
-import type { MyContext } from "../../shared/types"
-import { isAdmin } from "../../shared/utils"
+import type { MyContext } from "../../shared/types.js"
+import { isAdmin } from "../../shared/utils.js"
 import { Markup } from "telegraf"
 import {
   clearDraft, getDraft, setDraftUiMessageId, getDraftUiMessageId, clearDraftUiMessageId
-} from "./broadcast.state"
+} from "./broadcast.state.js"
 import {
   changeDraft, onDraftText, renderBroadcastPreview, startBroadcastDraft
-} from "../../app/ui/screens.adminBroadcast"
-import { sendBroadcast } from "./broadcast.service"
+} from "../../app/ui/screens.adminBroadcast.js"
+import { sendBroadcast } from "./broadcast.service.js"
 
 function ensureMarkup(m?: ReturnType<typeof Markup.inlineKeyboard>) {
   return m?.reply_markup ? { reply_markup: m.reply_markup } : {}

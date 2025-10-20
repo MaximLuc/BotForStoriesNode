@@ -1,9 +1,9 @@
 import type { MiddlewareFn } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import {
   clearPendingCover,
   sweepPendingCovers,
-} from "../../features/stories/cover.state";
+} from "../../features/stories/cover.state.js";
 
 export const coverPendingGuard: MiddlewareFn<MyContext> = async (ctx, next) => {
   sweepPendingCovers();

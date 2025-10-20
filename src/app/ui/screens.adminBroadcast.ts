@@ -1,6 +1,6 @@
-import type { MyContext } from "../../shared/types"
+import type { MyContext } from "../../shared/types.js"
 import { Markup } from "telegraf"
-import { getDraft, setDraftType, setDraftTtl, setDraftText, startDraft, setDraftAudience } from "../../features/broadcast/broadcast.state"
+import { getDraft, setDraftType, setDraftTtl, setDraftText, startDraft, setDraftAudience } from "../../features/broadcast/broadcast.state.js"
 
 function html(s=""){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
 

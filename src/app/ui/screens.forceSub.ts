@@ -1,5 +1,5 @@
 import { Markup } from "telegraf"
-import { RequiredChannel } from "../../db/models/RequiredChannel"
+import { RequiredChannel } from "../../db/models/RequiredChannel.js"
 
 export async function renderForceSubscribeScreen() {
   const channels = await RequiredChannel.find().lean()

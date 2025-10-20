@@ -1,11 +1,11 @@
-import type { MyContext } from "../../shared/types";
-import { buildInlineMain } from "./menus";
+import { buildInlineMain } from "./menus.js";
+import { renderAddStoryTextScreen } from "./screens.addStoryText.js";
+import { renderReadStoriesScreen } from "./screens.readStories.js";
+import { renderProfileUserStatsScreen } from "./screens.profileStats.js";
+import { renderAdminStatsScreen } from "./screens.adminStats.js";
+import { isAdmin, isPremium } from "../../shared/utils.js";
+import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
-import { isAdmin, isPremium } from "../../shared/utils";
-import { renderAddStoryTextScreen } from "./screens.addStoryText";
-import { renderReadStoriesScreen } from "./screens.readStories";
-import { renderProfileUserStatsScreen } from "./screens.profileStats";
-import { renderAdminStatsScreen } from "./screens.adminStats";
 
 export type ScreenId =
   | "main"

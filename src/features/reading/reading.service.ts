@@ -1,8 +1,8 @@
 import { Types } from "mongoose";
-import type { MyContext } from "../../shared/types";
-import { Story } from "../../db/models/Story";
-import { StoryReadSession } from "../../db/models/StoryReadSession";
-import { UserStats } from "../../db/models/UserStats";
+import type { MyContext } from "../../shared/types.js";
+import { Story } from "../../db/models/Story.js";
+import { StoryReadSession } from "../../db/models/StoryReadSession.js";
+import { UserStats } from "../../db/models/UserStats.js";
 
 const PAGE_LEN = 3600;
 function paginate(text: string, limit = PAGE_LEN): string[] {

@@ -1,5 +1,5 @@
 import type { Telegraf } from "telegraf"
-import { BroadcastMessage } from "../../db/models/BroadcastMessage"
+import { BroadcastMessage } from "../../db/models/BroadcastMessage.js"
 
 type Delivery = { tgId: number; messageId: number; deleted?: boolean }
 type BroadcastLean = { _id: any; deliveries: Delivery[] }

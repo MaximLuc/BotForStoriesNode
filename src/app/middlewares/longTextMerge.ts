@@ -1,7 +1,7 @@
 import type { MiddlewareFn } from "telegraf";
-import type { MyContext } from "../../shared/types";
-import { isAdmin } from "../../shared/utils";
-import { getOrCreateDraft } from "../../features/stories/draft.service";
+import type { MyContext } from "../../shared/types.js";
+import { isAdmin } from "../../shared/utils.js";
+import { getOrCreateDraft } from "../../features/stories/draft.service.js";
 
 type Acc = {
   parts: string[];

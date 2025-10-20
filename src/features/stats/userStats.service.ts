@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { UserStats, type UserStatsDoc } from "../../db/models/UserStats";
-import { Story } from "../../db/models/Story";
+import { UserStats, type UserStatsDoc } from "../../db/models/UserStats.js";
+import { Story } from "../../db/models/Story.js";
 
 type TopEntry = {
   storyId: string;

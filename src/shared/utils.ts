@@ -1,6 +1,6 @@
-import type { UserDoc } from "../db/models/User";
-import type { StoryDoc } from "../db/models/Story";
-import { ROLE_RANK, ROLE, type Role } from "./constants";
+import type { UserDoc } from "../db/models/User.js";
+import type { StoryDoc } from "../db/models/Story.js";
+import { ROLE_RANK, ROLE, type Role } from "./constants.js";
 
 export function getUserRank(user?: UserDoc | null): number {
   const r = (user?.role as Role) || ROLE.USER;

@@ -1,15 +1,15 @@
 import type { Telegraf } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
-import { Story } from "../../db/models/Story";
-import { isAdmin } from "../../shared/utils";
-import { safeEdit } from "../../app/ui/respond";
+import { Story } from "../../db/models/Story.js";
+import { isAdmin } from "../../shared/utils.js";
+import { safeEdit } from "../../app/ui/respond.js";
 
 import {
   setPendingCover,
   getPendingCover,
   clearPendingCover,
-} from "../stories/cover.state";
+} from "../stories/cover.state.js";
 
 type StoryLean = {
   _id: any;

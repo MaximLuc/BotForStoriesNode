@@ -1,5 +1,5 @@
 import type { Telegraf } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
 import {
   getOrCreateDraft,
@@ -7,10 +7,10 @@ import {
   setField,
   setEndingTitle,
   setEndingText,
-} from "./draft.service";
-import { renderAddStoryTextScreen } from "../../app/ui/screens.addStoryText";
-import { aggFinalize, aggReset } from "./input.aggregator";
-import { tryDeleteUserMessagesHard } from "./tryDelete";
+} from "./draft.service.js";
+import { renderAddStoryTextScreen } from "../../app/ui/screens.addStoryText.js";
+import { aggFinalize, aggReset } from "./input.aggregator.js";
+import { tryDeleteUserMessagesHard } from "./tryDelete.js";
 
 function html(s = "") {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

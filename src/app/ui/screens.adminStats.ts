@@ -1,10 +1,10 @@
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
 import {
   getGlobalStoryStats,
   getTopStories,
   getRecentTrend,
-} from "../../features/stats/adminStats.service";
+} from "../../features/stats/adminStats.service.js";
 
 function fmtMs(ms?: number) {
   if (!ms || ms <= 0) return "-";

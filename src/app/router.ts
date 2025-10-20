@@ -1,22 +1,22 @@
 import type { Telegraf } from "telegraf";
 import { Types } from "mongoose";
-import type { MyContext } from "../shared/types";
-import { navigate } from "./ui/navigate";
-import { registerAddStoryTextActions } from "../features/stories/addStoryText.actions";
-import { registerCoverActions } from "../features/stories/cover.actions";
-import { registerReadHandlers } from "../features/reading/read.handlers";
-import { registerDraftInputCollector } from "../features/stories/addStoryText.collector";
-import { registerDraftFinishHandlers } from "../features/stories/addStoryText.finish";
-import { registerFileImportActions } from "../features/stories/fileImport.actions";
-import { registerAdminDeleteHandlers } from "../features/stories/adminDelete.handlers";
-import { registerAdminCoverHandlers } from "../features/stories/adminCover.handlers";
-import { registerBroadcastActions } from "../features/broadcast/broadcast.actions";
-import { registerBroadcastSweeper } from "../features/broadcast/broadcast.sweeper";
-import { registerSubscriptionAdminActions } from "../features/subscription/subscription.actions";
-import { registerSubscriptionUserActions } from "../features/subscription/subscription.user.actions";
-import { registerBuyEndingActions } from "../features/reading/buyEnding.actions";
-import { isAdmin } from "../shared/utils";
-import { addTokens } from "../features/tokens/wallet.service";
+import type { MyContext } from "../shared/types.js";
+import { navigate } from "./ui/navigate.js";
+import { registerAddStoryTextActions } from "../features/stories/addStoryText.actions.js";
+import { registerCoverActions } from "../features/stories/cover.actions.js";
+import { registerReadHandlers } from "../features/reading/read.handlers.js";
+import { registerDraftInputCollector } from "../features/stories/addStoryText.collector.js";
+import { registerDraftFinishHandlers } from "../features/stories/addStoryText.finish.js";
+import { registerFileImportActions } from "../features/stories/fileImport.actions.js";
+import { registerAdminDeleteHandlers } from "../features/stories/adminDelete.handlers.js";
+import { registerAdminCoverHandlers } from "../features/stories/adminCover.handlers.js";
+import { registerBroadcastActions } from "../features/broadcast/broadcast.actions.js";
+import { registerBroadcastSweeper } from "../features/broadcast/broadcast.sweeper.js";
+import { registerSubscriptionAdminActions } from "../features/subscription/subscription.actions.js";
+import { registerSubscriptionUserActions } from "../features/subscription/subscription.user.actions.js";
+import { registerBuyEndingActions } from "../features/reading/buyEnding.actions.js";
+import { isAdmin } from "../shared/utils.js";
+import { addTokens } from "../features/tokens/wallet.service.js";
 
 function bindDual(
   bot: Telegraf<MyContext>,

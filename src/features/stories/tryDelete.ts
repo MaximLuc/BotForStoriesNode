@@ -1,4 +1,4 @@
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

@@ -1,8 +1,8 @@
 import type { MiddlewareFn } from "telegraf"
-import type { MyContext } from "../../shared/types"
-import { checkUserSubscribed } from "../../features/subscription/subscription.service"
-import { renderForceSubscribeScreen } from "../ui/screens.forceSub"
-import { getLastMessageId } from "./singleMessage"
+import type { MyContext } from "../../shared/types.js"
+import { checkUserSubscribed } from "../../features/subscription/subscription.service.js"
+import { renderForceSubscribeScreen } from "../ui/screens.forceSub.js"
+import { getLastMessageId } from "./singleMessage.js"
 import { Markup } from "telegraf"
 
 function ensureMarkup(inline?: ReturnType<typeof Markup.inlineKeyboard>) {

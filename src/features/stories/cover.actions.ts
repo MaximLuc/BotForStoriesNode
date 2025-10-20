@@ -1,13 +1,13 @@
 import type { Telegraf } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
-import { Story } from "../../db/models/Story";
-import { getLastMessageId } from "../../app/middlewares/singleMessage";
+import { Story } from "../../db/models/Story.js";
+import { getLastMessageId } from "../../app/middlewares/singleMessage.js";
 import {
   setPendingCover,
   getPendingCover,
   clearPendingCover,
-} from "./cover.state";
+} from "./cover.state.js";
 
 async function updateMenu(ctx: MyContext, text: string, inline?: any) {
   const kb = inline

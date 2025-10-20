@@ -1,6 +1,6 @@
 import { Markup } from "telegraf";
-import type { UserDoc } from "../../db/models/User";
-import { isAdmin, isPremium } from "../../shared/utils";
+import type { UserDoc } from "../../db/models/User.js";
+import { isAdmin, isPremium } from "../../shared/utils.js";
 
 export function hasAdminAccess(user?: UserDoc) {
   return isAdmin(user);

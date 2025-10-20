@@ -1,5 +1,5 @@
 import { Types } from "mongoose"
-import { UserWallet, type IUserWallet } from "../../db/models/UserWallet"
+import { UserWallet, type IUserWallet } from "../../db/models/UserWallet.js"
 
 export async function getOrCreateWallet(userId: Types.ObjectId, tgId?: number) {
   let w = await UserWallet.findOne({ userId }).lean<IUserWallet | null>()

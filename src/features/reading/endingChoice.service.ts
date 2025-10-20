@@ -1,6 +1,6 @@
 import { Types } from "mongoose"
-import { UserEndingChoice, type IUserEndingChoice } from "../../db/models/UserEndingChoice"
-import type { MyContext } from "../../shared/types"
+import { UserEndingChoice, type IUserEndingChoice } from "../../db/models/UserEndingChoice.js"
+import type { MyContext } from "../../shared/types.js"
 
 export type AccessKind = "chosen" | "extra" | "locked" | "premium_all"
 

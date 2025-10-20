@@ -1,9 +1,9 @@
 import type { Telegraf } from "telegraf"
-import type { MyContext } from "../../shared/types"
-import { checkUserSubscribed } from "./subscription.service"
-import { renderForceSubscribeScreen } from "../../app/ui/screens.forceSub"
+import type { MyContext } from "../../shared/types.js"
+import { checkUserSubscribed } from "./subscription.service.js"
+import { renderForceSubscribeScreen } from "../../app/ui/screens.forceSub.js"
 import { Markup } from "telegraf"
-import { getScreen } from "../../app/ui/screens"
+import { getScreen } from "../../app/ui/screens.js"
 
 function ensureMarkup(inline?: ReturnType<typeof Markup.inlineKeyboard>) {
   return inline?.reply_markup ? { reply_markup: inline.reply_markup } : {}

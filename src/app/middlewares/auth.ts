@@ -1,8 +1,8 @@
 import type { MiddlewareFn } from "telegraf";
-import type { MyContext } from "../../shared/types";
-import { User, type UserDoc } from "../../db/models/User";
-import { cfg } from "../../shared/config";
-import { addTokens } from "../../features/tokens/wallet.service";
+import type { MyContext } from "../../shared/types.js";
+import { User, type UserDoc } from "../../db/models/User.js";
+import { cfg } from "../../shared/config.js";
+import { addTokens } from "../../features/tokens/wallet.service.js";
 import { Types } from "mongoose";
 
 const USER_TTL_MS = 90_000;

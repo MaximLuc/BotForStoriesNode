@@ -1,4 +1,4 @@
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 
 type Bucket = {
   chatId: number;

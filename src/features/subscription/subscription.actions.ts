@@ -1,9 +1,9 @@
 import type { Telegraf } from "telegraf"
-import type { MyContext } from "../../shared/types"
+import type { MyContext } from "../../shared/types.js"
 import { Markup } from "telegraf"
-import { RequiredChannel } from "../../db/models/RequiredChannel"
-import { isAdmin } from "../../shared/utils"
-import { getLastMessageId } from "../../app/middlewares/singleMessage"
+import { RequiredChannel } from "../../db/models/RequiredChannel.js"
+import { isAdmin } from "../../shared/utils.js"
+import { getLastMessageId } from "../../app/middlewares/singleMessage.js"
 
 function ensureMarkup(inline?: ReturnType<typeof Markup.inlineKeyboard>) {
   return inline?.reply_markup ? { reply_markup: inline.reply_markup } : {}

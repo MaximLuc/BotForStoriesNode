@@ -1,13 +1,13 @@
 import type { Telegraf } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import { Types } from "mongoose";
-import { spendOneToken } from "../tokens/wallet.service";
-import { grantExtraByToken } from "./endingChoice.service";
-import { Story } from "../../db/models/Story";
-import { renderReadEndingScreen } from "../../app/ui/screens.readStory";
+import { spendOneToken } from "../tokens/wallet.service.js";
+import { grantExtraByToken } from "./endingChoice.service.js";
+import { Story } from "../../db/models/Story.js";
+import { renderReadEndingScreen } from "../../app/ui/screens.readStory.js";
 import { Markup } from "telegraf";
-import { renderBuyEndingConfirmScreen } from "../../app/ui/screens.buyEnding";
-import { chooseEnding } from "./reading.service";
+import { renderBuyEndingConfirmScreen } from "../../app/ui/screens.buyEnding.js";
+import { chooseEnding } from "./reading.service.js";
 
 function esc(s: string = ""): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

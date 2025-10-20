@@ -1,5 +1,5 @@
 import type { MiddlewareFn } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 
 const LIMIT = 5;
 const WINDOW_MS = 2000;

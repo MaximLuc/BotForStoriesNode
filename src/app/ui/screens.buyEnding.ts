@@ -1,7 +1,7 @@
 import { Markup } from "telegraf"
-import type { MyContext } from "../../shared/types"
+import type { MyContext } from "../../shared/types.js"
 import { Types } from "mongoose"
-import { getBalance } from "../../features/tokens/wallet.service"
+import { getBalance } from "../../features/tokens/wallet.service.js"
 
 export async function renderBuyEndingConfirmScreen(
   ctx: MyContext,

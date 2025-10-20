@@ -1,16 +1,16 @@
 import type { Telegraf } from "telegraf";
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
-import { Story } from "../../db/models/Story";
+import { Story } from "../../db/models/Story.js";
 import {
   renderReadEndingScreen,
   userRank,
   paginateStory,
   makePagerRow,
-} from "../../app/ui/screens.readStory";
-import { openOrPage, chooseEnding, dropActiveSession } from "./reading.service";
-import { navigate } from "../../app/ui/navigate";
-import { forgetChat } from "../../app/middlewares/singleMessage";
+} from "../../app/ui/screens.readStory.js";
+import { openOrPage, chooseEnding, dropActiveSession } from "./reading.service.js";
+import { navigate } from "../../app/ui/navigate.js";
+import { forgetChat } from "../../app/middlewares/singleMessage.js";
 
 type EndingLean = { _id: any; title?: string; text?: string; minRank?: number };
 type StoryLean = {
@@ -273,7 +273,7 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     }
 
     const { Types } = await import("mongoose")
-    const { isAllPremium, hasAccessToEnding, tryLockFirstChoice } = await import("./endingChoice.service")
+    const { isAllPremium, hasAccessToEnding, tryLockFirstChoice } = await import("./endingChoice.service.js")
 
     const premiumAll = isAllPremium(ctx)
     if (premiumAll) {
@@ -300,7 +300,7 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
       return editOrReplyText(ctx, safe, inline);
     }
 
-    const { renderBuyEndingConfirmScreen } = await import("../../app/ui/screens.buyEnding")
+    const { renderBuyEndingConfirmScreen } = await import("../../app/ui/screens.buyEnding.js")
     const scr = await renderBuyEndingConfirmScreen(ctx, storyId, idx, userId)
     return editOrReplyText(ctx, scr.text, scr.inline)
   });

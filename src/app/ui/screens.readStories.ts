@@ -1,7 +1,7 @@
-import type { MyContext } from "../../shared/types";
+import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
-import type { ScreenPayload } from "./screens";
-import { Story } from "../../db/models/Story";
+import type { ScreenPayload } from "./screens.js";
+import { Story } from "../../db/models/Story.js";
 import type { InlineKeyboardButton } from "telegraf/types";
 
 const PAGE_SIZE = 10;

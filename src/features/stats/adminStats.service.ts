@@ -1,6 +1,7 @@
-import { PipelineStage, Types } from "mongoose";
-import { Story, type StoryDoc } from "../../db/models/Story";
-import { StoryReadSession } from "../../db/models/StoryReadSession";
+import { Types } from "mongoose";
+import type { PipelineStage } from "mongoose";
+import { Story, type StoryDoc } from "../../db/models/Story.js";
+import { StoryReadSession } from "../../db/models/StoryReadSession.js";
 
 export type GlobalStats = {
   storiesTotal: number;

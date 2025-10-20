@@ -1,9 +1,9 @@
 import {
-  DraftEnding,
   DraftStory,
-  DraftStoryDoc,
-} from "../../db/models/DraftStory";
-import { Story } from "../../db/models/Story";
+} from "../../db/models/DraftStory.js";
+
+import type { DraftEnding,DraftStoryDoc } from "../../db/models/DraftStory.js";
+import { Story } from "../../db/models/Story.js";
 
 export async function getOrCreateDraft(tgId: number) {
   let d = await DraftStory.findOne({ tgId });

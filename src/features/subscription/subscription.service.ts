@@ -1,5 +1,5 @@
-import { RequiredChannel } from "../../db/models/RequiredChannel"
-import type { MyContext } from "../../shared/types"
+import { RequiredChannel } from "../../db/models/RequiredChannel.js"
+import type { MyContext } from "../../shared/types.js"
 
 export async function checkUserSubscribed(ctx: MyContext): Promise<boolean> {
   const channels = await RequiredChannel.find().lean()
