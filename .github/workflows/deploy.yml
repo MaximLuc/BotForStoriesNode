@@ -26,12 +26,11 @@ jobs:
       - name: Pack artefact
         shell: bash
         run: |
-          # добавим package-lock.json в архив, только если он есть
           PKG_LOCK=""
           if [ -f package-lock.json ]; then
             PKG_LOCK="package-lock.json"
           fi
-          tar -czf artefact.tar.gz dist package.json $PKG_LOCK ecosystem.config.js
+          tar -czf artefact.tar.gz dist package.json $PKG_LOCK ecosystem.config.cjs
 
       - name: Upload artefact to server
         uses: appleboy/scp-action@v0.1.7
@@ -54,5 +53,5 @@ jobs:
             tar -xzf artefact.tar.gz
             rm -f artefact.tar.gz
             npm install --omit=dev
-            pm2 startOrReload ecosystem.config.js --env production
+            pm2 startOrReload ecosystem.config.cjs --env production
             pm2 save
