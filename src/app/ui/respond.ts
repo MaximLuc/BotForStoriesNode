@@ -1,6 +1,8 @@
 import { Markup } from "telegraf";
 import type { InlineKeyboardMarkup } from "telegraf/types";
 import type { MyContext } from "../../shared/types.js";
+import { deletePrevMenuIfExists, saveMenuAnchor } from "../uiAnchor.js"; 
+import { isCallbackMessageStale } from "../middlewares/staleGuard.js";
 
 function normalizeInline(
   inline?: ReturnType<typeof Markup.inlineKeyboard> | InlineKeyboardMarkup
@@ -24,9 +26,26 @@ export async function safeEdit(
       ? (ctx.callbackQuery as any).message
       : undefined;
 
+  const { reply_markup } = normalizeInline(inline);
+
+  const mustReply =
+    Boolean((ctx.state as any)?.forceReply) ||
+    (ctx.callbackQuery ? isCallbackMessageStale(ctx) : false);
+
+  if (mustReply) {
+    await deletePrevMenuIfExists(ctx).catch(() => {});
+    if (msg?.chat?.id && msg?.message_id) {
+      try { await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id); } catch {}
+    }
+    const sent = await ctx.reply(text, { parse_mode: parseMode, reply_markup });
+    await saveMenuAnchor(ctx, sent.message_id);
+    (ctx.state as any)?.rememberMessageId?.(sent.message_id);
+    await cbq();
+    return;
+  }
+
   const currentText = msg && "text" in msg ? msg.text : undefined;
   const currentMarkup = msg?.reply_markup;
-  const { reply_markup } = normalizeInline(inline);
 
   if (
     currentText === text &&
@@ -42,10 +61,6 @@ export async function safeEdit(
     return;
   } catch (e: any) {
     const descr: string = e?.response?.description || "";
-    if (/message is not modified/i.test(descr)) {
-      await cbq();
-      return;
-    }
     const isNoText = /no text in the message to edit/i.test(descr);
     const notFound = /message to edit not found/i.test(descr);
     const cantEdit =
@@ -54,14 +69,14 @@ export async function safeEdit(
     if (!(isNoText || notFound || cantEdit)) {
       throw e;
     }
-    const chatId = ctx.chat?.id;
-    const messageId = msg?.message_id;
-    if (chatId && messageId) {
-      try {
-        await ctx.telegram.deleteMessage(chatId, messageId);
-      } catch {}
+
+    await deletePrevMenuIfExists(ctx).catch(() => {});
+    if (msg?.chat?.id && msg?.message_id) {
+      try { await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id); } catch {}
     }
+
     const sent = await ctx.reply(text, { parse_mode: parseMode, reply_markup });
+    await saveMenuAnchor(ctx, sent.message_id);
     (ctx.state as any)?.rememberMessageId?.(sent.message_id);
     await cbq();
   }
@@ -82,17 +97,32 @@ export async function respond(
   const { reply_markup } = normalizeInline(opts.inline);
   const parse_mode = opts.parseMode ?? "Markdown";
 
-  try {
-    await ctx.editMessageText(text, { parse_mode, reply_markup });
-    return;
-  } catch {}
+  const msg: any =
+    ctx.callbackQuery && "message" in ctx.callbackQuery
+      ? (ctx.callbackQuery as any).message
+      : undefined;
+
+  const mustReply =
+    Boolean((ctx.state as any)?.forceReply) ||
+    (ctx.callbackQuery ? isCallbackMessageStale(ctx) : false);
+
+  if (!mustReply) {
+    try {
+      await ctx.editMessageText(text, { parse_mode, reply_markup });
+      return;
+    } catch { }
+  }
+
+  await deletePrevMenuIfExists(ctx).catch(() => {});
+  if (mustReply && msg?.chat?.id && msg?.message_id) {
+    try { await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id); } catch {}
+  }
 
   const sent = await ctx.reply(text, { parse_mode, reply_markup });
+  await saveMenuAnchor(ctx, sent.message_id);
   (ctx.state as any)?.rememberMessageId?.(sent.message_id);
 
   if (opts.replyNoticeText) {
-    try {
-      await ctx.reply(opts.replyNoticeText);
-    } catch {}
+    try { await ctx.reply(opts.replyNoticeText); } catch {}
   }
 }
