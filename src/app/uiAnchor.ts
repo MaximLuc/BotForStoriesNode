@@ -24,3 +24,4 @@ export async function saveMenuAnchor(ctx: MyContext, messageId: number) {
     { upsert: true }
   ).exec();
 }
+/// --- IGNORE ---
