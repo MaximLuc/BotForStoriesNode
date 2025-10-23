@@ -4,7 +4,7 @@ import { Story } from "../../db/models/Story.js";
 import { StoryReadSession } from "../../db/models/StoryReadSession.js";
 import { UserStats } from "../../db/models/UserStats.js";
 
-const PAGE_LEN = 2600;
+const PAGE_LEN = 2000;
 function paginate(text: string, limit = PAGE_LEN): string[] {
   const t = (text ?? "").trim();
   if (t.length <= limit) return [t];
