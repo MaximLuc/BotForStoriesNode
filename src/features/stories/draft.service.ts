@@ -8,7 +8,6 @@ import { Story } from "../../db/models/Story.js";
 export async function getOrCreateDraft(tgId: number) {
   let d = await DraftStory.findOne({ tgId });
   if (!d) d = await DraftStory.create({ tgId, endings: [] });
-  console.log("Draft story:", d);
   return d;
 }
 
