@@ -4,6 +4,8 @@ import { checkUserSubscribed } from "./subscription.service.js"
 import { renderForceSubscribeScreen } from "../../app/ui/screens.forceSub.js"
 import { Markup } from "telegraf"
 import { getScreen } from "../../app/ui/screens.js"
+import { respond } from "../../app/ui/respond.js"
+import { logError } from "../../shared/logger.js"
 
 function ensureMarkup(inline?: ReturnType<typeof Markup.inlineKeyboard>) {
   return inline?.reply_markup ? { reply_markup: inline.reply_markup } : {}
@@ -21,23 +23,16 @@ export function registerSubscriptionUserActions(bot: Telegraf<MyContext>) {
  
       try {
         const scr = await renderForceSubscribeScreen()
-        await ctx.editMessageText(scr.text, {
-          parse_mode: scr.parseMode,
-          ...ensureMarkup(scr.inline),
-        })
-      } catch {
-
+        await respond(ctx, scr.text, { parseMode: scr.parseMode, inline: scr.inline as any })
+      } catch (e) {
+        logError("subscription.user.actions.forceSub", e)
       }
       return
     }
 
     try {
       const main = await getScreen(ctx, "main")
-      await ctx.editMessageText(main.text, {
-        parse_mode: main.parseMode ?? "Markdown",
-        ...ensureMarkup(main.inline),
-      })
-    } catch {
-    }
+      await respond(ctx, main.text, { parseMode: main.parseMode ?? "Markdown", inline: main.inline as any })
+    } catch (e) { logError("subscription.user.actions.toMain", e) }
   })
 }

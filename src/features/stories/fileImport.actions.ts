@@ -17,41 +17,16 @@ import {
   clearPendingImport,
 } from "./import.state.js";
 import { getLastMessageId } from "../../app/middlewares/singleMessage.js";
+import { logTelegramError } from "../../shared/logger.js";
+import { safeEdit } from "../../app/ui/respond.js";
+import { logError } from "../../shared/logger.js";
 
 function html(s = "") {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 async function updateMenu(ctx: MyContext, text: string, inline?: any) {
-  const kb = inline
-    ? inline.reply_markup
-      ? inline
-      : { reply_markup: inline }
-    : undefined;
-
-  if (ctx.callbackQuery && "message" in ctx.callbackQuery) {
-    try {
-      await ctx.editMessageText(text, { parse_mode: "HTML", ...kb });
-      return;
-    } catch {}
-  }
-
-  const chatId = ctx.chat?.id;
-  if (chatId) {
-    const lastId = getLastMessageId(chatId);
-    if (lastId) {
-      try {
-        await ctx.telegram.editMessageText(chatId, lastId, undefined, text, {
-          parse_mode: "HTML",
-          ...kb,
-        });
-        return;
-      } catch {}
-    }
-  }
-
-  const sent = await ctx.reply(text, { parse_mode: "HTML", ...kb });
-  (ctx.state as any)?.rememberMessageId?.(sent.message_id);
+  try { await safeEdit(ctx, text, inline, "HTML") } catch (e) { logTelegramError("fileImport.updateMenu.safeEdit", e) }
 }
 
 const HELP = () => `Пришлите файл в одном из форматов: <b>DOCX / RTF / TXT</b>.
@@ -124,7 +99,7 @@ export function registerFileImportActions(bot: Telegraf<MyContext>) {
       if (!chatId || !msgId) return;
       try {
         await ctx.telegram.deleteMessage(chatId, msgId);
-      } catch {}
+      } catch (e) { logTelegramError("fileImport.deleteUserMessage", e, { chatId, msgId }) }
     };
 
     if (!(isDocx || isRtf || isTxt)) {
@@ -180,7 +155,7 @@ export function registerFileImportActions(bot: Telegraf<MyContext>) {
         payload.inline
       );
     } catch (e) {
-      console.error("[import_file] error", e);
+      logError("fileImport.processDocument", e, { fileId, fileName, mime })
       await safeDeleteUserMessage();
       return updateMenu(
         ctx,

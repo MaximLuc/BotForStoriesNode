@@ -4,6 +4,7 @@ import { Markup } from "telegraf";
 import { Story } from "../../db/models/Story.js";
 import { isAdmin } from "../../shared/utils.js";
 import { safeEdit } from "../../app/ui/respond.js";
+import { logTelegramError } from "../../shared/logger.js";
 
 import {
   setPendingCover,
@@ -21,7 +22,7 @@ type StoryLean = {
 };
 
 const PAGE_SIZE = 10;
-const backPageByUser = new Map<number, number>();
+  const backPageByUser = new Map<number, number>();
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -171,11 +172,11 @@ export function registerAdminCoverHandlers(bot: Telegraf<MyContext>) {
       : m.document.file_id;
     const msgId = m?.message_id;
 
-    const tryDelete = async () => {
+  const tryDelete = async () => {
       if (!ctx.chat?.id || !msgId) return;
       try {
         await ctx.telegram.deleteMessage(ctx.chat.id, msgId);
-      } catch {}
+      } catch (e) { logTelegramError("adminCover.deleteUserMsg", e, { chatId: ctx.chat?.id, msgId }) }
     };
 
     try {

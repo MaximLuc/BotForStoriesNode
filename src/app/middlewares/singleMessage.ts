@@ -1,5 +1,6 @@
 import type { MiddlewareFn } from "telegraf";
 import type { MyContext } from "../../shared/types.js";
+import { logTelegramError } from "../../shared/logger.js";
 
 type Entry = { messageId: number; updatedAt: number };
 const lastByChat = new Map<number, Entry>();
@@ -11,7 +12,7 @@ let lastSweep = Date.now();
 async function safeDelete(ctx: MyContext, chatId: number, messageId: number) {
   try {
     await ctx.telegram.deleteMessage(chatId, messageId);
-  } catch {}
+  } catch (e) { logTelegramError("singleMessage.safeDelete", e, { chatId, messageId }) }
 }
 
 function sweep() {

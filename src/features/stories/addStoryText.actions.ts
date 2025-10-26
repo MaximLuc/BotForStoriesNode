@@ -17,6 +17,8 @@ import {
 import type { DraftEnding } from "../../db/models/DraftStory.js";
 import { renderAddStoryTextScreen } from "../../app/ui/screens.addStoryText.js";
 import { getLastMessageId } from "../../app/middlewares/singleMessage.js";
+import { safeEdit } from "../../app/ui/respond.js";
+import { logError } from "../../shared/logger.js";
 import { isAdmin } from "../../shared/utils.js";
 import { aggStart } from "./input.aggregator.js";
 
@@ -27,17 +29,11 @@ function html(s = "") {
 }
 
 async function updateMenu(ctx: MyContext, text: string, inline?: any) {
-  const kb = inline
-    ? inline.reply_markup
-      ? inline
-      : { reply_markup: inline }
-    : undefined;
   try {
-    await ctx.editMessageText(text, { parse_mode: "HTML", ...kb });
-    return;
-  } catch {}
-  const sent = await ctx.reply(text, { parse_mode: "HTML", ...kb });
-  (ctx.state as any)?.rememberMessageId?.(sent.message_id);
+    await safeEdit(ctx, text, inline, "HTML");
+  } catch (e) {
+    logError("addStoryText.updateMenu.safeEdit", e);
+  }
 }
 
 async function renderForm(ctx: MyContext, hint?: string) {

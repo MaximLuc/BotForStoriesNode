@@ -1,4 +1,5 @@
 import type { MyContext } from "../../shared/types.js";
+import { logTelegramError } from "../../shared/logger.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -13,11 +14,14 @@ export async function tryDeleteUserMessagesHard(
     try {
       await ctx.telegram.deleteMessage(chatId, id);
       await sleep(60);
-    } catch {
+    } catch (e) {
+      logTelegramError("tryDeleteUserMessagesHard.first", e, { chatId, id });
       await sleep(180);
       try {
         await ctx.telegram.deleteMessage(chatId, id);
-      } catch {}
+      } catch (e2) {
+        logTelegramError("tryDeleteUserMessagesHard.retry", e2, { chatId, id });
+      }
     }
   }
 }

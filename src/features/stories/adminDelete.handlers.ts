@@ -4,6 +4,7 @@ import { Markup } from "telegraf";
 import { Story } from "../../db/models/Story.js";
 import { isAdmin } from "../../shared/utils.js";
 import { safeEdit } from "../../app/ui/respond.js";
+import { logTelegramError } from "../../shared/logger.js";
 
 type EndingLean = { title?: string; text?: string };
 type StoryLean = {
@@ -59,10 +60,11 @@ async function showPhotoOneWindow(
         ...(kb ?? {}),
       });
       return;
-    } catch {
+    } catch (e) {
+      logTelegramError("adminDelete.editMessageCaption", e);
       try {
         await ctx.telegram.deleteMessage(src.chat.id, src.message_id);
-      } catch {}
+      } catch (e2) { logTelegramError("adminDelete.deletePrevPhoto", e2, { chatId: src.chat?.id, messageId: src.message_id }) }
       const sent = await ctx.replyWithPhoto(fileId, {
         caption,
         parse_mode: "Markdown",
@@ -75,7 +77,7 @@ async function showPhotoOneWindow(
     if (src?.chat?.id && src?.message_id) {
       try {
         await ctx.telegram.deleteMessage(src.chat.id, src.message_id);
-      } catch {}
+      } catch (e) { logTelegramError("adminDelete.deletePrevMessage", e, { chatId: src.chat?.id, messageId: src.message_id }) }
     }
     const sent = await ctx.replyWithPhoto(fileId, {
       caption,
