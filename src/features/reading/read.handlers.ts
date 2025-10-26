@@ -10,6 +10,7 @@ import {
 } from "../../app/ui/screens.readStory.js";
 import { openOrPage, chooseEnding, dropActiveSession } from "./reading.service.js";
 import { navigate } from "../../app/ui/navigate.js";
+import { safeEdit } from "../../app/ui/respond.js";
 import { forgetChat } from "../../app/middlewares/singleMessage.js";
 
 type EndingLean = { _id: any; title?: string; text?: string; minRank?: number };
@@ -71,7 +72,9 @@ async function editPhotoCaption(ctx: MyContext, caption: string, inline?: any) {
       parse_mode: "HTML",
       reply_markup: inline?.reply_markup ?? inline,
     });
-  } catch {
+  } catch (e) {
+    const { logTelegramError } = await import("../../shared/logger.js");
+    logTelegramError("read.handlers.editPhotoCaption", e);
     const msg: any =
       ctx.callbackQuery && "message" in (ctx.callbackQuery as any)
         ? (ctx.callbackQuery as any).message
@@ -89,28 +92,7 @@ async function editPhotoCaption(ctx: MyContext, caption: string, inline?: any) {
 }
 
 async function editOrReplyText(ctx: MyContext, text: string, inline?: any) {
-  try {
-    await ctx.editMessageText(text, {
-      parse_mode: "HTML",
-      reply_markup: inline?.reply_markup ?? inline,
-    });
-  } catch {
-    const chatId = ctx.chat?.id;
-    const msg: any =
-      ctx.callbackQuery && "message" in (ctx.callbackQuery as any)
-        ? (ctx.callbackQuery as any).message
-        : undefined;
-    if (chatId && msg && msg.message_id) {
-      try {
-        await ctx.telegram.deleteMessage(chatId, msg.message_id);
-      } catch {}
-    }
-    const sent = await ctx.reply(text, {
-      parse_mode: "HTML",
-      reply_markup: inline?.reply_markup ?? inline,
-    });
-    (ctx.state as any)?.rememberMessageId?.(sent.message_id);
-  }
+  await safeEdit(ctx, text, inline, "HTML");
 }
 
 function buildStoryKeyboard(s: StoryLean, page: number, pages: number) {

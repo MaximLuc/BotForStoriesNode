@@ -1,5 +1,6 @@
 import type { MyContext } from "../shared/types.js";
 import { UiAnchor, type UiAnchorDoc } from "../db/models/UiAnchor.js";
+import { logTelegramError } from "../shared/logger.js";
 
 export async function deletePrevMenuIfExists(ctx: MyContext) {
   if (!ctx.chat?.id || !ctx.from?.id) return;
@@ -12,8 +13,7 @@ export async function deletePrevMenuIfExists(ctx: MyContext) {
   if (!a) return;
   try {
     await ctx.telegram.deleteMessage(a.chatId, a.messageId);
-  } catch {
-  }
+  } catch (e) { logTelegramError("uiAnchor.deletePrevMenuIfExists.delete", e, { chatId: a.chatId, messageId: a.messageId }) }
 }
 
 export async function saveMenuAnchor(ctx: MyContext, messageId: number) {
@@ -24,4 +24,3 @@ export async function saveMenuAnchor(ctx: MyContext, messageId: number) {
     { upsert: true }
   ).exec();
 }
-/// --- IGNORE ---

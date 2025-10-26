@@ -1,4 +1,4 @@
-import type { Telegraf } from "telegraf";
+﻿import type { Telegraf } from "telegraf";
 import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
 import {
@@ -17,6 +17,8 @@ import {
 import type { DraftEnding } from "../../db/models/DraftStory.js";
 import { renderAddStoryTextScreen } from "../../app/ui/screens.addStoryText.js";
 import { getLastMessageId } from "../../app/middlewares/singleMessage.js";
+import { safeEdit } from "../../app/ui/respond.js";
+import { logError } from "../../shared/logger.js";
 import { isAdmin } from "../../shared/utils.js";
 import { aggStart } from "./input.aggregator.js";
 
@@ -27,17 +29,11 @@ function html(s = "") {
 }
 
 async function updateMenu(ctx: MyContext, text: string, inline?: any) {
-  const kb = inline
-    ? inline.reply_markup
-      ? inline
-      : { reply_markup: inline }
-    : undefined;
   try {
-    await ctx.editMessageText(text, { parse_mode: "HTML", ...kb });
-    return;
-  } catch {}
-  const sent = await ctx.reply(text, { parse_mode: "HTML", ...kb });
-  (ctx.state as any)?.rememberMessageId?.(sent.message_id);
+    await safeEdit(ctx, text, inline, "HTML");
+  } catch (e) {
+    logError("addStoryText.updateMenu.safeEdit", e);
+  }
 }
 
 async function renderForm(ctx: MyContext, hint?: string) {
@@ -48,7 +44,7 @@ async function renderForm(ctx: MyContext, hint?: string) {
 
 function inputWaitKb() {
   return Markup.inlineKeyboard([
-    [Markup.button.callback("✅ Готово", "draft:finish_input")],
+    [Markup.button.callback("✅ Сохранить ввод", "draft:finish_input")],
     [Markup.button.callback("✖ Отмена", "draft:cancel_input")],
     [Markup.button.callback("↩︎ Назад", "admin:add_story_text")],
   ]);
@@ -122,13 +118,13 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
     await setStoryAccess(ctx.state.user!.tgId, 0);
     await resetPending(ctx.state.user!.tgId);
     await ctx.answerCbQuery("Доступ: всем");
-    await renderForm(ctx, "✅ Доступ к истории: всем");
+await renderForm(ctx, "Готово: доступ к истории: всем");
   });
   bot.action("draft:access_story:premium", async (ctx) => {
     await setStoryAccess(ctx.state.user!.tgId, 1);
     await resetPending(ctx.state.user!.tgId);
-    await ctx.answerCbQuery("Доступ: только с подпиской");
-    await renderForm(ctx, "✅ Доступ к истории: премиум");
+    await ctx.answerCbQuery("Доступ: для подписчиков");
+await renderForm(ctx, "Готово: доступ к истории: подписчики");
   });
 
   bot.action(/^draft:ask_end_access:(\d+)$/, async (ctx) => {
@@ -156,13 +152,13 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
   bot.action("draft:cancel_access", async (ctx) => {
     await resetPending(ctx.state.user!.tgId);
     await ctx.answerCbQuery("Отменено");
-    await renderForm(ctx);
+await renderForm(ctx);
   });
 
   bot.action("draft:add_ending", async (ctx) => {
     const d = await getOrCreateDraft(ctx.state.user!.tgId);
     if (d.endings.length >= 3) {
-      await ctx.answerCbQuery("Максимум 3 продолжения");
+      await ctx.answerCbQuery("Максимум 3 концовки");
       return;
     }
     const index = d.endings.length;
@@ -171,9 +167,7 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery();
     await updateMenu(
       ctx,
-      `Отправляйте <b>название продолжения #${
-        index + 1
-      }</b>. Нажмите <b>«Готово»</b>, когда закончите.`,
+      `Введите <b>заголовок концовки #${index + 1}</b>. Отправьте одно сообщение с <b>названием</b>.`,
       inputWaitKb()
     );
   });
@@ -181,8 +175,8 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
   bot.action(/^draft:del_end:(\d+)$/, async (ctx) => {
     const i = Number(ctx.match[1]);
     await removeEnding(ctx.state.user!.tgId, i);
-    await ctx.answerCbQuery("Удалено");
-    await renderForm(ctx);
+    await ctx.answerCbQuery("Отменено");
+await renderForm(ctx);
   });
 
   bot.action("draft:commit", async (ctx) => {
@@ -196,34 +190,17 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
         endings: d.endings as DraftEnding[],
       });
       if (!ready) {
-        await updateMenu(
-          ctx,
-          "Черновик заполнен не полностью. Нужны: название, начало и хотя бы одно продолжение.",
-          Markup.inlineKeyboard([
-            [{ text: "⬅️ Назад", callback_data: "admin" }],
-          ])
-        );
+        await updateMenu(ctx, "Не хватает данных для публикации. Проверьте: заголовок, вступление и хотя бы одну концовку.", Markup.inlineKeyboard([[{ text: "↩︎ Назад", callback_data: "admin" }]]));
         return;
       }
 
       const story = await commitDraftToStory(tgId);
-      await updateMenu(
-        ctx,
-        `✅ История добавлена: <b>${html(story.title)}</b> (окон. ${
-          story.endings.length
-        })`,
-        Markup.inlineKeyboard([
-          [{ text: "🌌 ОБЛОЖКА", callback_data: `cover:add:${story._id}` }],
-          [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
-        ])
-      );
+      await updateMenu(ctx, `Готово: история создана: <b>${html(story.title)}</b> (концовок: ${story.endings.length})`, Markup.inlineKeyboard([[{ text: "➕ Добавить обложку", callback_data: `cover:add:${story._id}` }],[{ text: "↩︎ В админку", callback_data: "admin" }]]));
     } catch (e) {
       console.error("[draft:commit] error:", e);
-      await updateMenu(
-        ctx,
-        "Ошибка при сохранении истории. Попробуйте ещё раз.",
-        Markup.inlineKeyboard([[{ text: "⬅️ Назад", callback_data: "admin" }]])
-      );
+      await updateMenu(ctx, "Неизвестная ошибка сохранения. Попробуйте ещё раз.", Markup.inlineKeyboard([[{ text: "↩︎ Назад", callback_data: "admin" }]]));
     }
   });
 }
+
+

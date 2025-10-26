@@ -1,5 +1,6 @@
 import { RequiredChannel } from "../../db/models/RequiredChannel.js"
 import type { MyContext } from "../../shared/types.js"
+import { logError } from "../../shared/logger.js"
 
 export async function checkUserSubscribed(ctx: MyContext): Promise<boolean> {
   const channels = await RequiredChannel.find().lean()
@@ -14,7 +15,8 @@ export async function checkUserSubscribed(ctx: MyContext): Promise<boolean> {
       const m = await telegram.getChatMember(ch.chatId, userId)
       if (["member","administrator","creator"].includes(m.status)) continue
       else return false
-    } catch {
+    } catch (e) {
+      logError("subscription.checkUserSubscribed.getChatMember", e, { chatId: ch.chatId, userId })
       return false
     }
   }

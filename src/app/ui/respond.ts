@@ -3,6 +3,7 @@ import type { InlineKeyboardMarkup } from "telegraf/types";
 import type { MyContext } from "../../shared/types.js";
 import { deletePrevMenuIfExists, saveMenuAnchor } from "../uiAnchor.js"; 
 import { isCallbackMessageStale } from "../middlewares/staleGuard.js";
+import { logTelegramError } from "../../shared/logger.js";
 
 function normalizeInline(
   inline?: ReturnType<typeof Markup.inlineKeyboard> | InlineKeyboardMarkup
@@ -20,7 +21,11 @@ export async function safeEdit(
   inline?: ReturnType<typeof Markup.inlineKeyboard> | InlineKeyboardMarkup,
   parseMode: "Markdown" | "HTML" = "Markdown"
 ) {
-  const cbq = (p?: string) => ctx.answerCbQuery(p).catch(() => {});
+  const cbq = async (p?: string) => {
+    if (ctx.callbackQuery) {
+      try { await ctx.answerCbQuery(p); } catch {}
+    }
+  };
   const msg: any =
     ctx.callbackQuery && "message" in ctx.callbackQuery
       ? (ctx.callbackQuery as any).message
@@ -35,7 +40,7 @@ export async function safeEdit(
   if (mustReply) {
     await deletePrevMenuIfExists(ctx).catch(() => {});
     if (msg?.chat?.id && msg?.message_id) {
-      try { await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id); } catch {}
+      try { await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id); } catch (e) { logTelegramError("respond.safeEdit.delete-before-reply", e); }
     }
     const sent = await ctx.reply(text, { parse_mode: parseMode, reply_markup });
     await saveMenuAnchor(ctx, sent.message_id);
@@ -60,6 +65,7 @@ export async function safeEdit(
     await cbq();
     return;
   } catch (e: any) {
+    logTelegramError("respond.safeEdit.editMessageText", e);
     const descr: string = e?.response?.description || "";
     const isNoText = /no text in the message to edit/i.test(descr);
     const notFound = /message to edit not found/i.test(descr);
@@ -72,7 +78,7 @@ export async function safeEdit(
 
     await deletePrevMenuIfExists(ctx).catch(() => {});
     if (msg?.chat?.id && msg?.message_id) {
-      try { await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id); } catch {}
+      try { await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id); } catch (e2) { logTelegramError("respond.safeEdit.delete-fallback", e2); }
     }
 
     const sent = await ctx.reply(text, { parse_mode: parseMode, reply_markup });
@@ -82,11 +88,12 @@ export async function safeEdit(
   }
 }
 
-export type RespondOpts = {
+type RespondOpts = {
   inline?: ReturnType<typeof Markup.inlineKeyboard> | InlineKeyboardMarkup;
   setReplyKeyboard?: any;
   replyNoticeText?: string;
   parseMode?: "Markdown" | "HTML";
+  linkPreviewOptions?: any;
 };
 
 export async function respond(
@@ -96,6 +103,7 @@ export async function respond(
 ) {
   const { reply_markup } = normalizeInline(opts.inline);
   const parse_mode = opts.parseMode ?? "Markdown";
+  const link_preview_options = opts.linkPreviewOptions;
 
   const msg: any =
     ctx.callbackQuery && "message" in ctx.callbackQuery
@@ -108,21 +116,21 @@ export async function respond(
 
   if (!mustReply) {
     try {
-      await ctx.editMessageText(text, { parse_mode, reply_markup });
+      await ctx.editMessageText(text, { parse_mode, reply_markup, ...(link_preview_options ? { link_preview_options } : {}) });
       return;
-    } catch { }
+    } catch (e) { logTelegramError("respond.respond.editMessageText", e); }
   }
 
   await deletePrevMenuIfExists(ctx).catch(() => {});
   if (mustReply && msg?.chat?.id && msg?.message_id) {
-    try { await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id); } catch {}
+    try { await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id); } catch (e) { logTelegramError("respond.respond.delete-before-reply", e); }
   }
 
-  const sent = await ctx.reply(text, { parse_mode, reply_markup });
+  const sent = await ctx.reply(text, { parse_mode, reply_markup, ...(link_preview_options ? { link_preview_options } : {}) });
   await saveMenuAnchor(ctx, sent.message_id);
   (ctx.state as any)?.rememberMessageId?.(sent.message_id);
 
   if (opts.replyNoticeText) {
-    try { await ctx.reply(opts.replyNoticeText); } catch {}
+    try { await ctx.reply(opts.replyNoticeText); } catch (e) { logTelegramError("respond.respond.replyNotice", e); }
   }
 }

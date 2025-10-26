@@ -3,6 +3,8 @@ import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
 import { Story } from "../../db/models/Story.js";
 import { getLastMessageId } from "../../app/middlewares/singleMessage.js";
+import { logTelegramError } from "../../shared/logger.js";
+import { safeEdit } from "../../app/ui/respond.js";
 import {
   setPendingCover,
   getPendingCover,
@@ -16,29 +18,9 @@ async function updateMenu(ctx: MyContext, text: string, inline?: any) {
       : { reply_markup: inline }
     : undefined;
 
-  if (ctx.callbackQuery && "message" in ctx.callbackQuery) {
-    try {
-      await ctx.editMessageText(text, { parse_mode: "Markdown", ...kb });
-      return;
-    } catch {}
-  }
-
-  const chatId = ctx.chat?.id;
-  if (chatId) {
-    const lastId = getLastMessageId(chatId);
-    if (lastId) {
-      try {
-        await ctx.telegram.editMessageText(chatId, lastId, undefined, text, {
-          parse_mode: "Markdown",
-          ...kb,
-        });
-        return;
-      } catch {}
-    }
-  }
-
-  const sent = await ctx.reply(text, { parse_mode: "Markdown", ...kb });
-  (ctx.state as any)?.rememberMessageId?.(sent.message_id);
+  try {
+    await safeEdit(ctx, text, kb as any, "Markdown")
+  } catch (e) { logTelegramError("cover.actions.updateMenu.safeEdit", e) }
 }
 
 export function registerCoverActions(bot: Telegraf<MyContext>) {
@@ -88,7 +70,8 @@ export function registerCoverActions(bot: Telegraf<MyContext>) {
           [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
         ])
       );
-    } catch {
+    } catch (e) {
+      logTelegramError("cover.actions.deleteCover", e, { storyId })
       await updateMenu(
         ctx,
         "❌ Ошибка при удалении обложки.",
@@ -116,7 +99,7 @@ export function registerCoverActions(bot: Telegraf<MyContext>) {
       if (!msgId) return;
       try {
         await ctx.deleteMessage(msgId);
-      } catch {}
+      } catch (e) { logTelegramError("cover.actions.deleteUserMsg", e, { msgId }) }
     };
 
     if (isDocument && !hasPhoto) {
@@ -159,7 +142,8 @@ export function registerCoverActions(bot: Telegraf<MyContext>) {
           [{ text: "⬅️ В админ-меню", callback_data: "admin" }],
         ])
       );
-    } catch {
+    } catch (e) {
+      logTelegramError("cover.actions.saveCover", e, { storyId })
       await deleteUserMsg();
       await updateMenu(
         ctx,

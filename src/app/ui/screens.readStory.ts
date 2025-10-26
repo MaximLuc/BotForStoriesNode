@@ -1,9 +1,15 @@
-import type { MyContext } from "../../shared/types.js";
+﻿import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
 import type { ScreenPayload } from "./screens.js";
 import { Story } from "../../db/models/Story.js";
 import type { InlineKeyboardButton } from "telegraf/types";
 import { Types } from "mongoose";
+import {
+  STORY_PAGE_LEN_TEXT,
+  STORY_FIRST_PAGE_CAPTION_LEN,
+  ENDING_PAGE_LEN_TEXT,
+  STAR_BADGE,
+} from "../../shared/constants.js";
 
 type EndingLean = {
   _id: any;
@@ -21,8 +27,8 @@ type StoryLean = {
   coverUrl?: string;
 };
 
-export const PAGE_LEN_TEXT = 1600;
-export const FIRST_PAGE_CAPTION_LEN = 900;
+const PAGE_LEN_TEXT = STORY_PAGE_LEN_TEXT;
+const FIRST_PAGE_CAPTION_LEN = STORY_FIRST_PAGE_CAPTION_LEN;
 
 export function userRank(ctx: MyContext): 0 | 1 {
   const role = (ctx.state.user as any)?.role;
@@ -78,10 +84,10 @@ export function makePagerRow(
     row.push(
       Markup.button.callback("◀️ Назад", `read:story:${storyId}:p:${page - 1}`)
     );
-  row.push(Markup.button.callback(`Стр. ${page + 1} из ${pages}`, "noop"));
+  row.push(Markup.button.callback(`Стр. ${page + 1} / ${pages}`, "noop"));
   if (page < pages - 1)
     row.push(
-      Markup.button.callback("Вперёд ▶️", `read:story:${storyId}:p:${page + 1}`)
+      Markup.button.callback("Вперед ▶️", `read:story:${storyId}:p:${page + 1}`)
     );
   return row;
 }
@@ -100,11 +106,11 @@ export function makeEndingPagerRow(
         `read:end:${storyId}:${idx}:p:${page - 1}`
       )
     );
-  row.push(Markup.button.callback(`Стр. ${page + 1} из ${pages}`, "noop"));
+  row.push(Markup.button.callback(`Стр. ${page + 1} / ${pages}`, "noop"));
   if (page < pages - 1)
     row.push(
       Markup.button.callback(
-        "Вперёд ▶️",
+        "Вперед ▶️",
         `read:end:${storyId}:${idx}:p:${page + 1}`
       )
     );
@@ -112,7 +118,7 @@ export function makeEndingPagerRow(
 }
 
 function star(minRank?: number) {
-  return (minRank ?? 0) >= 1 ? "★ " : "";
+  return (minRank ?? 0) >= 1 ? STAR_BADGE : "";
 }
 
 export async function renderReadStoryScreen(
@@ -151,7 +157,7 @@ export async function renderReadStoryScreen(
   const ur = userRank(ctx);
   if ((s.minRank ?? 0) > ur) {
     return {
-      text: `★ Эта история доступна только подписчикам.\n\n*${s.title}*`,
+      text: `⭐ Эта история доступна только подписчикам.\n\n*${s.title}*`,
       inline: Markup.inlineKeyboard([
         [Markup.button.callback("↩︎ К списку", "read_stories")],
       ]),
@@ -163,7 +169,7 @@ export async function renderReadStoryScreen(
   const pages = Math.max(1, parts.length);
   if (page > pages - 1) page = pages - 1;
 
-  const titleLine = `*${s.title}*${(s.minRank ?? 0) >= 1 ? "  ★" : ""}`;
+  const titleLine = `*${s.title}*${(s.minRank ?? 0) >= 1 ? "  ⭐" : ""}`;
   const header = pages > 1 ? `_(страница ${page + 1}/${pages})_\n\n` : "";
   const body = parts[page] || "";
   const text = `${titleLine}\n\n${header}${body}`;
@@ -276,7 +282,7 @@ export async function renderReadEndingScreen(
   const ur = userRank(ctx);
   if ((ending.minRank ?? 0) > ur) {
     return {
-      text: `★ Это окончание доступно только подписчикам.\n\n*${s.title}* → _${ending.title ?? "Окончание"}_`,
+      text: `⭐ Это окончание доступно только подписчикам.\n\n*${s.title}* → _${ending.title ?? "Окончание"}_`,
       inline: Markup.inlineKeyboard([
         [Markup.button.callback("⭐ Оформить подписку", "subscribe")],
         [
@@ -292,7 +298,7 @@ export async function renderReadEndingScreen(
     };
   }
 
-  const parts = paginateSegment(ending.text || "", PAGE_LEN_TEXT);
+  const parts = paginateSegment(ending.text || "", ENDING_PAGE_LEN_TEXT);
   const pages = Math.max(1, parts.length);
   if (page > pages - 1) page = pages - 1;
 
@@ -321,3 +327,10 @@ export async function renderReadEndingScreen(
     inline: Markup.inlineKeyboard(rows),
   };
 }
+
+
+
+
+
+
+

@@ -1,5 +1,6 @@
 import type { MiddlewareFn } from "telegraf";
 import type { MyContext } from "../../shared/types.js";
+import { logTelegramError } from "../../shared/logger.js";
 
 const STALE_SEC = 36 * 60 * 60;
 
@@ -9,7 +10,6 @@ function isCallbackMessageStale(ctx: MyContext): boolean {
   const ageSec = Math.floor(Date.now() / 1000) - Number(msg.date);
   return ageSec > STALE_SEC;
 }
-
 
 export const staleGuard: MiddlewareFn<MyContext> = async (ctx, next) => {
   if (!ctx.callbackQuery) return next();
@@ -23,13 +23,14 @@ export const staleGuard: MiddlewareFn<MyContext> = async (ctx, next) => {
     if (msg?.chat?.id && msg?.message_id) {
       await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id);
     }
-  } catch {
-
+  } catch (e) {
+    logTelegramError("staleGuard.deleteMessage", e);
   }
 
   (ctx.state as any).forceReply = true;
-  await ctx.answerCbQuery("Меню обновлено ✔️").catch(() => {});
+  await ctx.answerCbQuery("Сообщение устарело, отправьте заново").catch(() => {});
   return next();
 };
 
 export { isCallbackMessageStale };
+

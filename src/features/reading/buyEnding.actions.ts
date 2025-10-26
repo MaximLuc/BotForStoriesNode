@@ -8,24 +8,14 @@ import { renderReadEndingScreen } from "../../app/ui/screens.readStory.js";
 import { Markup } from "telegraf";
 import { renderBuyEndingConfirmScreen } from "../../app/ui/screens.buyEnding.js";
 import { chooseEnding } from "./reading.service.js";
+import { respond } from "../../app/ui/respond.js";
 
 function esc(s: string = ""): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 async function editOrReply(ctx: MyContext, text: string, inline?: any) {
-  try {
-    await ctx.editMessageText(text, {
-      parse_mode: "HTML",
-      reply_markup: inline?.reply_markup ?? inline,
-    });
-  } catch {
-    const sent = await ctx.reply(text, {
-      parse_mode: "HTML",
-      reply_markup: inline?.reply_markup ?? inline,
-    });
-    (ctx.state as any)?.rememberMessageId?.(sent.message_id);
-  }
+  return respond(ctx, text, { parseMode: "HTML", inline })
 }
 
 export function registerBuyEndingActions(bot: Telegraf<MyContext>) {

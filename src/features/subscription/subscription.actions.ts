@@ -4,6 +4,8 @@ import { Markup } from "telegraf"
 import { RequiredChannel } from "../../db/models/RequiredChannel.js"
 import { isAdmin } from "../../shared/utils.js"
 import { getLastMessageId } from "../../app/middlewares/singleMessage.js"
+import { respond } from "../../app/ui/respond.js"
+import { logError } from "../../shared/logger.js"
 
 function ensureMarkup(inline?: ReturnType<typeof Markup.inlineKeyboard>) {
   return inline?.reply_markup ? { reply_markup: inline.reply_markup } : {}
@@ -35,33 +37,7 @@ async function redrawChannelsScreen(ctx: MyContext, notice?: string) {
   const text = await buildChannelsText(notice)
   const kb = Markup.inlineKeyboard([[Markup.button.callback("↩︎ В админ-меню", "admin")]])
 
-  try {
-    const res = await ctx.editMessageText(text, { parse_mode: "HTML", ...ensureMarkup(kb) })
-    let mid: number | undefined
-    if (typeof res !== "boolean" && res && "message_id" in res) {
-      mid = (res as any).message_id
-    } else if (ctx.callbackQuery && "message" in ctx.callbackQuery) {
-      mid = (ctx.callbackQuery as any).message?.message_id
-    }
-    if (mid) (ctx.state as any).rememberMessageId?.(mid)
-    return
-  } catch {  }
-
-  const chatId = ctx.chat?.id
-  const lastId = chatId ? getLastMessageId(chatId) : undefined
-  if (chatId && lastId) {
-    try {
-      await ctx.telegram.editMessageText(chatId, lastId, undefined, text, {
-        parse_mode: "HTML",
-        ...ensureMarkup(kb),
-      })
-      ;(ctx.state as any).rememberMessageId?.(lastId)
-      return
-    } catch {}
-  }
-
-  const sent = await ctx.reply(text, { parse_mode: "HTML", ...ensureMarkup(kb) })
-  ;(ctx.state as any).rememberMessageId?.(sent.message_id)
+  await respond(ctx, text, { parseMode: "HTML", inline: kb as any })
 }
 
 export function registerSubscriptionAdminActions(bot: Telegraf<MyContext>) {
@@ -88,7 +64,7 @@ export function registerSubscriptionAdminActions(bot: Telegraf<MyContext>) {
     const chatId = ctx.chat?.id
     const msgId = msg?.message_id
     if (chatId && msgId) {
-      try { await ctx.telegram.deleteMessage(chatId, msgId) } catch {}
+      try { await ctx.telegram.deleteMessage(chatId, msgId) } catch (e) { logError("subscription.admin.deleteUserMessage", e, { chatId, msgId }) }
     }
 
     const existing = await RequiredChannel.findOne({ username }).lean()

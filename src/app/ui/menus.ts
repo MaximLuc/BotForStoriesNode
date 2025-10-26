@@ -11,9 +11,8 @@ export function hasPremiumAccess(user?: UserDoc) {
 }
 
 export function buildReplyMain(user?: UserDoc) {
-  const rows: string[][] = [["Меню", "Профиль", "📖ВСЕ ИСТОРИИ📖"]];
-  if (hasAdminAccess(user)) rows.push(["Админ"]);
-
+  const rows: string[][] = [["Профиль", "Читать истории"], ["Помощь"]];
+  if (hasAdminAccess(user)) rows.push(["Админка"]);
   return Markup.keyboard(rows);
 }
 
@@ -24,7 +23,7 @@ export function buildInlineMain(user?: UserDoc) {
     [Markup.button.callback("Помощь", "help")],
     [Markup.button.callback("Техподдержка", "support")],
   ] as any[];
-  if (hasAdminAccess(user))
-    rows.push([Markup.button.callback("Админ", "admin")]);
+  if (hasAdminAccess(user)) rows.push([Markup.button.callback("Админка", "admin")]);
   return Markup.inlineKeyboard(rows);
 }
+

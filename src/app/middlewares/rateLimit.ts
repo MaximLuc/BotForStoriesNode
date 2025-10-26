@@ -1,5 +1,6 @@
 import type { MiddlewareFn } from "telegraf";
 import type { MyContext } from "../../shared/types.js";
+import { logError } from "../../shared/logger.js";
 
 const LIMIT = 5;
 const WINDOW_MS = 2000;
@@ -33,7 +34,7 @@ export const rateLimit: MiddlewareFn<MyContext> = async (ctx, next) => {
   if (fresh.length > LIMIT) {
     try {
       if ("callback_query" in ctx.update) {
-        await ctx.answerCbQuery("Слишком часто");
+      try { await ctx.answerCbQuery("Слишком часто"); } catch (e) { logError("rateLimit.answerCbQuery", e) }
       } else {
         await ctx.reply("Слишком часто");
       }
