@@ -3,25 +3,42 @@ import { Markup } from "telegraf";
 import type { ScreenPayload } from "./screens.js";
 import { Story } from "../../db/models/Story.js";
 import type { InlineKeyboardButton } from "telegraf/types";
+import {
+  STORIES_PAGE_SIZE,
+  NEW_STORY_WINDOW_MS,
+  NEW_BADGE_PREFIX,
+  NEW_BADGE_SUFFIX,
+  STAR_BADGE,
+  LIST_DOT_CHAR,
+  LIST_DOT_WIDTH,
+  TITLE_TRUNCATE_LIST,
+  TITLE_TRUNCATE_BUTTON,
+} from "../../shared/constants.js";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = STORIES_PAGE_SIZE;
+const NEW_MS = NEW_STORY_WINDOW_MS;
 
-function truncate(text: string, max = 40) {
+function truncate(text: string, max = TITLE_TRUNCATE_LIST) {
   const t = (text ?? "").trim();
   return t.length > max ? t.slice(0, max - 1) + "…" : t;
 }
-function dotLeaders(left: string, right: string, width = 48) {
+function dotLeaders(left: string, right: string, width = LIST_DOT_WIDTH) {
   const L = left.trim();
   const R = right.trim();
   const dots = Math.max(1, width - (L.length + R.length));
-  return `${L} ${"·".repeat(dots)} ${R}`;
+  return `${L} ${LIST_DOT_CHAR.repeat(dots)} ${R}`;
 }
 function star(minRank?: number) {
-  return (minRank ?? 0) >= 1 ? "★ " : "";
+  return (minRank ?? 0) >= 1 ? STAR_BADGE : "";
+}
+function isNew(createdAt?: any) {
+  if (!createdAt) return false;
+  const ts = new Date(createdAt as any).getTime();
+  return Date.now() - ts <= NEW_MS;
 }
 
 function twoColButtons(
-  items: { _id: string; title: string; minRank?: number }[]
+  items: { _id: string; title: string; minRank?: number; createdAt?: any }[]
 ) {
   const rows: InlineKeyboardButton[][] = [];
   for (let i = 0; i < items.length; i += 2) {
@@ -29,14 +46,20 @@ function twoColButtons(
     const b = items[i + 1];
     const row: InlineKeyboardButton[] = [
       Markup.button.callback(
-        `${star(a.minRank)}${truncate(a.title, 32)}`,
+        `${star(a.minRank)}${isNew(a.createdAt) ? NEW_BADGE_PREFIX : ""}${truncate(
+          a.title,
+          TITLE_TRUNCATE_BUTTON
+        )}${isNew(a.createdAt) ? NEW_BADGE_SUFFIX : ""}`,
         `story:${a._id}`
       ),
     ];
     if (b)
       row.push(
         Markup.button.callback(
-          `${star(b.minRank)}${truncate(b.title, 32)}`,
+          `${star(b.minRank)}${isNew(b.createdAt) ? NEW_BADGE_PREFIX : ""}${truncate(
+            b.title,
+            TITLE_TRUNCATE_BUTTON
+          )}${isNew(b.createdAt) ? NEW_BADGE_SUFFIX : ""}`,
           `story:${b._id}`
         )
       );
@@ -58,7 +81,7 @@ export async function renderReadStoriesScreen(
     if (Number.isFinite(p) && p >= 0) page = p;
   }
 
-  const query = { isPublished: true };
+  const query = { isPublished: true } as any;
   const total = await Story.countDocuments(query);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if (page > pages - 1) page = pages - 1;
@@ -71,28 +94,33 @@ export async function renderReadStoriesScreen(
 
   if (!docs.length) {
     return {
-      text: "Пока нет доступных историй.",
+      text: "Пока нет опубликованных историй.",
       inline: Markup.inlineKeyboard([
-        [Markup.button.callback("⬅️ Назад", "main")],
+        [Markup.button.callback("↩︎ В меню", "main")],
       ]),
     };
   }
 
-  const header = `📚 Доступные истории (★ — премиум)\nСтр. ${
+  const header = `Список доступных историй (сначала новые)\nСтр. ${
     page + 1
-  }/${pages} · всего ${total}\n`;
+  }/${pages} из всего ${total}\n`;
   const lines = docs.map((s) => {
-    const left = `${star(s.minRank)}${truncate(s.title)}`;
-    const right = `(${Array.isArray(s.endings) ? s.endings.length : 0})`;
+    const left = `${star((s as any).minRank)}${
+      isNew((s as any).createdAt) ? NEW_BADGE_PREFIX : ""
+    }${truncate((s as any).title)}${
+      isNew((s as any).createdAt) ? NEW_BADGE_SUFFIX : ""
+    }`;
+    const right = `(${Array.isArray((s as any).endings) ? (s as any).endings.length : 0})`;
     return " " + dotLeaders(left, right);
   });
   const text = [header, ...lines].join("\n");
 
   const storyRows = twoColButtons(
     docs.map((d) => ({
-      _id: String(d._id),
-      title: d.title,
-      minRank: d.minRank,
+      _id: String((d as any)._id),
+      title: (d as any).title,
+      minRank: (d as any).minRank,
+      createdAt: (d as any).createdAt,
     }))
   );
 
@@ -103,13 +131,13 @@ export async function renderReadStoriesScreen(
     );
   if (page < pages - 1)
     navRow.push(
-      Markup.button.callback("Вперёд ▶️", `read_stories:page:${page + 1}`)
+      Markup.button.callback("Вперед ▶️", `read_stories:page:${page + 1}`)
     );
 
   const rows: InlineKeyboardButton[][] = [
     ...storyRows,
     ...(navRow.length ? [navRow] : []),
-    [Markup.button.callback("⬅️ В меню", "main")],
+    [Markup.button.callback("↩︎ В меню", "main")],
   ];
 
   return {
@@ -117,3 +145,4 @@ export async function renderReadStoriesScreen(
     inline: Markup.inlineKeyboard(rows),
   };
 }
+

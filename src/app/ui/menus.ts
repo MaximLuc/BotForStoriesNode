@@ -18,8 +18,8 @@ export function buildReplyMain(user?: UserDoc) {
 
 export function buildInlineMain(user?: UserDoc) {
   const rows = [
-    [Markup.button.callback("Профиль", "profile")],
-    [Markup.button.callback("Читать истории", "read_stories")],
+    [Markup.button.callback("✨МОЙ ПРОФИЛЬ✨", "profile")],
+    [Markup.button.callback("📖ВСЕ ИСТОРИИ📖", "read_stories")],
     [Markup.button.callback("Помощь", "help")],
     [Markup.button.callback("Техподдержка", "support")],
   ] as any[];
