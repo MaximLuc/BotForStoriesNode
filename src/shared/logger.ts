@@ -22,7 +22,6 @@ export function logInfo(scope: string, message: string, extra?: Record<string, a
   } catch {}
 }
 
-// Known, expected Telegram API errors that are handled by fallback logic
 export function isBenignTelegramError(e: any): boolean {
   const d: string = (e && (e as any).response && (e as any).response.description) || (e && (e as any).message) || "";
   const s = d.toLowerCase();
@@ -36,6 +35,6 @@ export function isBenignTelegramError(e: any): boolean {
 }
 
 export function logTelegramError(scope: string, error: any, extra?: Record<string, any>) {
-  if (isBenignTelegramError(error)) return; // suppress noisy-but-expected errors
+  if (isBenignTelegramError(error)) return; 
   logError(scope, error, extra);
 }
