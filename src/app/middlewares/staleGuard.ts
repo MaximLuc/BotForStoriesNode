@@ -2,7 +2,7 @@ import type { MiddlewareFn } from "telegraf";
 import type { MyContext } from "../../shared/types.js";
 import { logTelegramError } from "../../shared/logger.js";
 
-const STALE_SEC = 36 * 60 * 60;
+const STALE_SEC = 10 * 60 * 60;
 
 function isCallbackMessageStale(ctx: MyContext): boolean {
   const msg: any = (ctx.callbackQuery as any)?.message;
