@@ -110,15 +110,32 @@ export async function respond(
       ? (ctx.callbackQuery as any).message
       : undefined;
 
+  const hasCbMessage = Boolean(ctx.callbackQuery && "message" in ctx.callbackQuery);
+
   const mustReply =
     Boolean((ctx.state as any)?.forceReply) ||
     (ctx.callbackQuery ? isCallbackMessageStale(ctx) : false);
 
-  if (!mustReply) {
+  if (!mustReply && hasCbMessage) {
     try {
       await ctx.editMessageText(text, { parse_mode, reply_markup, ...(link_preview_options ? { link_preview_options } : {}) });
+      try { await ctx.answerCbQuery(); } catch {}
       return;
-    } catch (e) { logTelegramError("respond.respond.editMessageText", e); }
+    } catch (e) {
+      logTelegramError("respond.respond.editMessageText", e);
+      await deletePrevMenuIfExists(ctx).catch(() => {});
+      if (msg?.chat?.id && msg?.message_id) {
+        try { await ctx.telegram.deleteMessage(msg.chat.id, msg.message_id); } catch (e2) { logTelegramError("respond.respond.delete-fallback", e2); }
+      }
+      const sent = await ctx.reply(text, { parse_mode, reply_markup, ...(link_preview_options ? { link_preview_options } : {}) });
+      await saveMenuAnchor(ctx, sent.message_id);
+      (ctx.state as any)?.rememberMessageId?.(sent.message_id);
+      try { await ctx.answerCbQuery(); } catch {}
+      if (opts.replyNoticeText) {
+        try { await ctx.reply(opts.replyNoticeText); } catch (e3) { logTelegramError("respond.respond.replyNotice", e3); }
+      }
+      return;
+    }
   }
 
   await deletePrevMenuIfExists(ctx).catch(() => {});
