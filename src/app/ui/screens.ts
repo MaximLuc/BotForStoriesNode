@@ -6,6 +6,21 @@ import { renderAdminStatsScreen } from "./screens.adminStats.js";
 import { isAdmin, isPremium } from "../../shared/utils.js";
 import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
+import { getBalance } from "../../features/tokens/wallet.service.js";
+import { Types } from "mongoose";
+
+const TOKEN_PACKS = [
+  { id: "p2",  tokens: 2,  priceRub: 35 },  
+  { id: "p5",  tokens: 5,  priceRub: 80 },   
+  { id: "p10", tokens: 10, priceRub: 150 },
+  { id: "p20", tokens: 20, priceRub: 280 },
+  { id: "p35", tokens: 35, priceRub: 430 },
+  { id: "p50", tokens: 50, priceRub: 600 },  
+] as const;
+
+export type TokenPackId = (typeof TOKEN_PACKS)[number]["id"];
+
+
 
 export type ScreenId =
   | "main"
@@ -16,7 +31,8 @@ export type ScreenId =
   | "storiesList"
   | "statistics"
   | "addStoryText"
-  | "readStories";
+  | "readStories"
+  | "buyTokens";
 
 export type ScreenPayload = {
   text: string;
@@ -58,6 +74,42 @@ const screens: Record<ScreenId, ScreenRenderer> = {
       [Markup.button.callback("Назад", "main")],
     ]),
   }),
+
+  buyTokens: async (ctx) => {
+    const u = ctx.state.user;
+    const userId = (u as any)?._id as Types.ObjectId | undefined;
+
+    let balanceText = "";
+    if (userId) {
+      const balance = await getBalance(userId);
+      balanceText = `\n\nТекущий баланс: <b>${balance}</b> токен(ов).`;
+    }
+
+    const legend =
+      "ℹ️ Токены нужны, чтобы открывать дополнительные концовки.\n" +
+      "Первая концовка в истории всегда бесплатна, остальные можно открыть за токены.\n";
+
+    const text =
+      "💰 <b>Покупка токенов</b>\n\n" +
+      legend +
+      "Выберите подходящий пакет:" +
+      balanceText;
+
+    const rows = TOKEN_PACKS.map((p) => [
+      Markup.button.callback(
+        `${p.tokens} ток. — ${p.priceRub}₽`,
+        `buy_tokens:${p.id}`
+      ),
+    ]);
+
+    rows.push([Markup.button.callback("↩︎ В главное меню", "main")]);
+
+    return {
+      text,
+      inline: Markup.inlineKeyboard(rows),
+      parseMode: "HTML",
+    };
+  },
 
   profileSubscription: (ctx) => {
     const u = ctx.state.user;

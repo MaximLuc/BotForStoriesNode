@@ -5,7 +5,7 @@ export async function renderForceSubscribeScreen() {
   const channels = await RequiredChannel.find().lean()
   const links = channels.map(c =>
     c.username
-      ? `• <a href="https://t.me/${c.username}">@${c.username}</a>`
+      ? `• <a href="https://t.me/+gsqYjlyv0owyZmIy">@${c.username}</a>`
       : `• ${c.title || c.chatId}`
   ).join("\n")
 
