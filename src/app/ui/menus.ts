@@ -20,10 +20,15 @@ export function buildInlineMain(user?: UserDoc) {
   const rows = [
     [Markup.button.callback("✨МОЙ ПРОФИЛЬ✨", "profile")],
     [Markup.button.callback("📖ВСЕ ИСТОРИИ📖", "read_stories")],
+    [Markup.button.callback("💰 Купить токены", "buy_tokens")],
     [Markup.button.callback("Помощь", "help")],
     [Markup.button.callback("Техподдержка", "support")],
   ] as any[];
-  if (hasAdminAccess(user)) rows.push([Markup.button.callback("Админка", "admin")]);
+
+  if (hasAdminAccess(user))
+    rows.push([Markup.button.callback("Админка", "admin")]);
+
   return Markup.inlineKeyboard(rows);
 }
+
 

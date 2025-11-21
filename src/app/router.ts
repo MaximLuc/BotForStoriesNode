@@ -1,4 +1,4 @@
-import type { Telegraf } from "telegraf";
+﻿import type { Telegraf } from "telegraf";
 import { Types } from "mongoose";
 import type { MyContext } from "../shared/types.js";
 import { navigate } from "./ui/navigate.js";
@@ -18,6 +18,7 @@ import { registerSubscriptionUserActions } from "../features/subscription/subscr
 import { registerBuyEndingActions } from "../features/reading/buyEnding.actions.js";
 import { isAdmin } from "../shared/utils.js";
 import { addTokens } from "../features/tokens/wallet.service.js";
+import { registerBuyTokensActions } from "../features/tokens/buyTokens.actions.js";
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -63,6 +64,12 @@ export function registerRouter(bot: Telegraf<MyContext>) {
     bot,
     { text: "Добавить историю (текстом)", action: "admin:add_story_text" },
     async (ctx) => navigate(ctx, "addStoryText")
+  );
+
+  bindDual(
+    bot,
+    { text: "Купить токены", action: "buy_tokens" },
+    async (ctx) => navigate(ctx, "buyTokens")
   );
 
   bot.action(/^read_stories:page:(\d+)$/, async (ctx) =>
@@ -144,6 +151,7 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   registerBroadcastSweeper(bot);
   registerSubscriptionAdminActions(bot);
   registerSubscriptionUserActions(bot);
+  registerBuyTokensActions(bot);  
   registerBuyEndingActions(bot);
 }
 
