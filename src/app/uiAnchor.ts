@@ -23,4 +23,4 @@ export async function saveMenuAnchor(ctx: MyContext, messageId: number) {
     { $set: { messageId, updatedAt: new Date() } },
     { upsert: true }
   ).exec();
-}
+}//
