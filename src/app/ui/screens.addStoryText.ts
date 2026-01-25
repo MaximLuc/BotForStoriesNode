@@ -1,5 +1,4 @@
-import type { MyContext } from "../../shared/types.js";
-import { Markup } from "telegraf";
+import type { MyContext } from "../../shared/types.js";import { Markup } from "telegraf";
 import {
   getOrCreateDraft,
   canCreate,
@@ -19,6 +18,12 @@ const cb = (text: string, data: string): InlineKeyboardButton => ({
   callback_data: data,
 });
 
+const priceLabel = (n?: number) => {
+  const v = Number(n ?? 0);
+  if (!v) return "🆓 бесплатно";
+  return `💰 ${v} токен(ов)`;
+};
+
 export async function renderAddStoryTextScreen(ctx: MyContext) {
   const tgId = ctx.state.user?.tgId;
   if (!tgId) {
@@ -32,13 +37,13 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
 
   if (d.pendingInput && (d.pendingInput as any).kind === "accessStory") {
     return {
-      text: `Доступ к истории: сейчас *${accessLabel(
-        d.minRank
-      )}*\nВыберите доступ:`,
+      text: `Цена истории: сейчас *${priceLabel((d as any).entryTokens)}*\nВыберите цену:`,
       inline: Markup.inlineKeyboard([
-        [cb("🌏 ВСЕМ", "draft:access_story:all")],
-        [cb("👥 ТОЛЬКО ПОДПИСЧИКАМ", "draft:access_story:premium")],
-        [cb("⬅️ Отмена", "draft:cancel_access")],
+        [cb("🆓 Бесплатно", "draft:price_story:0")],
+        [cb("💰 1 токен", "draft:price_story:1")],
+        [cb("💰 3 токена", "draft:price_story:3")],
+        [cb("💰 5 токенов", "draft:price_story:5")],
+        [cb("⬅️ Отмена", "draft:cancel_price")],
       ]),
     };
   }
@@ -47,7 +52,7 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
     const e = (d.endings as DraftEnding[])[i];
     return {
       text: `Доступ к продолжению #${i + 1}: сейчас *${accessLabel(
-        e?.minRank
+        e?.minRank,
       )}*\nВыберите доступ:`,
       inline: Markup.inlineKeyboard([
         [cb("🌏 ВСЕМ", `draft:end_access_set:${i}:all`)],
@@ -57,14 +62,36 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
     };
   }
 
+    if (d.pendingInput && (d.pendingInput as any).kind === "priceStory") {
+    const cur = Math.max(0, Math.floor(Number((d as any).entryTokens ?? 0)));
+
+    const label =
+      cur === 0 ? "бесплатно" : `${cur} токен(ов)`;
+
+    return {
+      text:
+        `Цена истории: сейчас <b>${label}</b>\n` +
+        `Выберите цену:`,
+      inline: Markup.inlineKeyboard([
+        [cb("🆓 Бесплатно", "draft:price_story:0")],
+        [cb("💠 1 токен", "draft:price_story:1")],
+        [cb("💠 3 токена", "draft:price_story:3")],
+        [cb("💠 5 токенов", "draft:price_story:5")],
+        [cb("⬅️ Отмена", "draft:cancel_price")],
+      ]),
+      parseMode: "HTML" as const,
+    };
+  }
+
+
   const rows: InlineKeyboardButton[][] = [];
 
   rows.push([cb("🪝ЗАДАТЬ НАЗВАНИЕ", "draft:set_title")]);
   rows.push([cb("🗣️ДОБАВИТЬ ТЕКСТ ДО ВЫБОРА", "draft:set_intro")]);
   rows.push([
     cb(
-      `🔐ДОСТУП К ИСТОРИИ: ${accessLabel(d.minRank)}`,
-      "draft:ask_access_story"
+      `💳 ЦЕНА ИСТОРИИ: ${priceLabel((d as any).entryTokens)}`,
+      "draft:ask_price_story",
     ),
   ]);
   rows.push([cb("📎ДОБАВИТЬ ПРОДОЛЖЕНИЕ ", "draft:add_ending")]);
@@ -75,7 +102,6 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
     ]);
     rows.push([
       cb(`🗑️УДАЛИТЬ №${i + 1}`, `draft:del_end:${i}`),
-      cb(`🔐ДОСТУП: ${accessLabel(e?.minRank)}`, `draft:ask_end_access:${i}`),
     ]);
   });
 
@@ -93,9 +119,7 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
     ? (d.endings as DraftEnding[])
         .map(
           (e, i) =>
-            `#${i + 1} ${e.title ? `«${e.title}»` : "—"}  ·  ${accessLabel(
-              e?.minRank
-            )}\n↳ ${preview(e.text, 10)}`
+            `#${i + 1} ${e.title ? `«${e.title}»` : "—"}\n↳ ${preview(e.text, 10)}`
         )
         .join("\n")
     : "—";
@@ -104,7 +128,7 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
 
 Название: ${d.title ?? "—"}
 Начало: ${preview(d.intro)}
-Доступ к истории: ${accessLabel(d.minRank)}
+Цена истории: ${priceLabel((d as any).entryTokens)}
 
 Окончания:
 ${endingsPreview}

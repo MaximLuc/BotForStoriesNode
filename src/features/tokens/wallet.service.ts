@@ -26,3 +26,17 @@ export async function spendOneToken(userId: Types.ObjectId): Promise<boolean> {
 export async function addTokens(userId: Types.ObjectId, amount: number) {
   await UserWallet.updateOne({ userId }, { $inc: { tokens: amount } }, { upsert: true })
 }
+
+export async function spendTokens(userId: Types.ObjectId, amount: number): Promise<boolean> {
+  const n = Math.max(0, Math.floor(amount));
+  if (n <= 0) return true;
+
+  const updated = await UserWallet.findOneAndUpdate(
+    { userId, tokens: { $gte: n } },
+    { $inc: { tokens: -n } },
+    { new: true }
+  ).lean<IUserWallet | null>();
+
+  return !!updated;
+}
+
