@@ -1,5 +1,4 @@
-import type { Telegraf } from "telegraf";
-import type { MyContext } from "../../shared/types.js";
+import type { Telegraf } from "telegraf";import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
 import { Types } from "mongoose";
 import { addTokens } from "./wallet.service.js";
@@ -114,47 +113,63 @@ export function registerBuyTokensActions(bot: Telegraf<MyContext>) {
     });
 
     const invoice = {
-  title: `${pack.tokens} токен(ов)`,
-  description: "Токены для открытия дополнительных концовок в историях.",
-  currency: "RUB",
-  prices: [{ label: `${pack.tokens} токен(ов)`, amount }], 
-  payload,
-  provider_token: cfg.payProviderToken,
+      title: `${pack.tokens} токен(ов)`,
+      description: "Токены для открытия дополнительных концовок в историях.",
+      currency: "RUB",
+      prices: [{ label: `${pack.tokens} токен(ов)`, amount }],
+      payload,
+      provider_token: cfg.payProviderToken,
 
-  need_email: true,
-  send_email_to_provider: true,
+      need_email: true,
+      send_email_to_provider: true,
 
-  provider_data: JSON.stringify({
-    receipt: {
-      tax_system_code: cfg.kassaTaxSystemCode,
-      items: [
-        {
-          description: `${pack.tokens} токен(ов) для бота`,
-          quantity: 1,
+      provider_data: JSON.stringify({
+        receipt: {
+          tax_system_code: cfg.kassaTaxSystemCode,
+          items: [
+            {
+              description: `${pack.tokens} токен(ов) для бота`,
+              quantity: 1,
 
-          amount: { value: pack.priceRub, currency: "RUB" },
+              amount: { value: pack.priceRub, currency: "RUB" },
 
-          vat_code: cfg.kassaVatCode,
-          payment_mode: "full_payment",
-          payment_subject: cfg.kassaPaymentSubject,
+              vat_code: cfg.kassaVatCode,
+              payment_mode: "full_payment",
+              payment_subject: cfg.kassaPaymentSubject,
+            },
+          ],
         },
-      ],
-    },
-  }),
-};
+      }),
+    };
 
     try {
       await (ctx.state as any).sendSingleInvoice(invoice);
-    } catch (e: any) {
-      await respond(ctx, "⚠️ Не удалось открыть оплату. Попробуйте ещё раз (создайте новый счёт).", {
-        parseMode: "HTML",
-        inline: Markup.inlineKeyboard([
-          [Markup.button.callback("🔄 Попробовать снова", `buy_tokens:pay:${pack.id}`)],
-          [Markup.button.callback("⬅️ Назад", "buy_tokens")],
+      await ctx.reply(
+        "💡 Если вы передумали, вы можете вернуться назад.",
+        Markup.inlineKeyboard([
+          [Markup.button.callback("🔙 К покупке токенов", "buy_tokens")],
           [Markup.button.callback("🏠 Главное меню", "main")],
-    ]),
-  });
-}
+        ]),
+      );
+    } catch (e: any) {
+      await respond(
+        ctx,
+        "⚠️ Не удалось открыть оплату. Попробуйте ещё раз (создайте новый счёт).",
+        {
+          parseMode: "HTML",
+          inline: Markup.inlineKeyboard([
+            [
+              Markup.button.callback(
+                "🔄 Попробовать снова",
+                `buy_tokens:pay:${pack.id}`,
+              ),
+            ],
+            [Markup.button.callback("⬅️ Назад", "buy_tokens")],
+            [Markup.button.callback("🏠 Главное меню", "main")],
+          ]),
+        },
+      );
+    }
   });
 
   bot.on("pre_checkout_query", async (ctx) => {
@@ -173,7 +188,7 @@ export function registerBuyTokensActions(bot: Telegraf<MyContext>) {
     try {
       await ctx.answerPreCheckoutQuery(
         ok,
-        ok ? undefined : "Платёж не прошёл проверку. Попробуйте ещё раз."
+        ok ? undefined : "Платёж не прошёл проверку. Попробуйте ещё раз.",
       );
     } catch {}
   });
@@ -196,7 +211,9 @@ export function registerBuyTokensActions(bot: Telegraf<MyContext>) {
     if (sp.currency !== "RUB" || sp.total_amount !== expectedAmount) {
       await (ctx.state as any).sendSingle?.(
         "⚠️ Платёж получен, но не прошёл проверку суммы/валюты. Напишите в поддержку.",
-        Markup.inlineKeyboard([[Markup.button.callback("🏠 Главное меню", "main")]])
+        Markup.inlineKeyboard([
+          [Markup.button.callback("🏠 Главное меню", "main")],
+        ]),
       );
       return next?.();
     }
@@ -225,7 +242,9 @@ export function registerBuyTokensActions(bot: Telegraf<MyContext>) {
         if (String(e?.code) !== "11000") {
           await (ctx.state as any).sendSingle?.(
             "⚠️ Платёж получен, но произошла ошибка учёта. Напишите в поддержку.",
-            Markup.inlineKeyboard([[Markup.button.callback("🏠 Главное меню", "main")]])
+            Markup.inlineKeyboard([
+              [Markup.button.callback("🏠 Главное меню", "main")],
+            ]),
           );
           return next?.();
         }
@@ -237,7 +256,7 @@ export function registerBuyTokensActions(bot: Telegraf<MyContext>) {
       Markup.inlineKeyboard([
         [Markup.button.callback("💰 Купить ещё токены", "buy_tokens")],
         [Markup.button.callback("🏠 Главное меню", "main")],
-      ])
+      ]),
     );
 
     return next?.();
