@@ -4,7 +4,6 @@ import { Markup } from "telegraf";
 import { Story } from "../../db/models/Story.js";
 import {
   renderReadEndingScreen,
-  userRank,
   paginateStory,
   makePagerRow,
 } from "../../app/ui/screens.readStory.js";
@@ -12,6 +11,7 @@ import { openOrPage, chooseEnding, dropActiveSession } from "./reading.service.j
 import { navigate } from "../../app/ui/navigate.js";
 import { safeEdit } from "../../app/ui/respond.js";
 import { forgetChat } from "../../app/middlewares/singleMessage.js";
+import { Types } from "mongoose";
 
 type EndingLean = { _id: any; title?: string; text?: string; minRank?: number };
 type StoryLean = {
@@ -19,8 +19,9 @@ type StoryLean = {
   title: string;
   text: string;
   endings: EndingLean[];
+  entryTokens?: number; 
   isPublished: boolean;
-  minRank?: number;
+  minRank?: number; 
   coverUrl?: string | null;
 };
 
@@ -53,17 +54,21 @@ async function sendOrReplaceWithPhoto(
     ctx.callbackQuery && "message" in (ctx.callbackQuery as any)
       ? (ctx.callbackQuery as any).message
       : undefined;
+
   if (chatId && msg && msg.message_id) {
     try {
       await ctx.telegram.deleteMessage(chatId, msg.message_id);
     } catch {}
   }
+
   const sent = await ctx.replyWithPhoto(fileId, {
     caption,
     parse_mode: "HTML",
     reply_markup: inline?.reply_markup ?? inline,
   });
+
   (ctx.state as any)?.rememberMessageId?.(sent.message_id);
+  return sent;
 }
 
 async function editPhotoCaption(ctx: MyContext, caption: string, inline?: any) {
@@ -73,8 +78,6 @@ async function editPhotoCaption(ctx: MyContext, caption: string, inline?: any) {
       reply_markup: inline?.reply_markup ?? inline,
     });
   } catch (e) {
-    const { logTelegramError } = await import("../../shared/logger.js");
-    logTelegramError("read.handlers.editPhotoCaption", e);
     const msg: any =
       ctx.callbackQuery && "message" in (ctx.callbackQuery as any)
         ? (ctx.callbackQuery as any).message
@@ -97,6 +100,7 @@ async function editOrReplyText(ctx: MyContext, text: string, inline?: any) {
 
 function buildStoryKeyboard(s: StoryLean, page: number, pages: number) {
   const rows: any[] = [];
+
   if (pages > 1) rows.push(makePagerRow(String(s._id), page, pages));
 
   if (page === pages - 1) {
@@ -128,15 +132,75 @@ function buildStoryKeyboard(s: StoryLean, page: number, pages: number) {
   }
 
   rows.push([Markup.button.callback("↩︎ К списку", `read:list_from:${s._id}`)]);
+  rows.push([Markup.button.callback("🏠 Главное меню", "main")]);
   return Markup.inlineKeyboard(rows);
 }
 
+async function renderAndShowStoryPage(ctx: MyContext, s: StoryLean, page: number) {
+  const coverId = extractFileId(s.coverUrl);
+  const parts = paginateStory(s.text || "", !!coverId);
+  const pages = Math.max(1, parts.length);
+
+  let p = page;
+  if (p > pages - 1) p = pages - 1;
+  if (p < 0) p = 0;
+
+  const titleLine = `<b>${esc(s.title)}</b>`;
+  const header = pages > 1 ? `<i>(страница ${p + 1}/${pages})</i>\n\n` : "";
+  const body = esc(parts[p] || "");
+  const text = `${titleLine}\n\n${header}${body}`;
+
+  const kb = buildStoryKeyboard(s, p, pages);
+
+  const currentIsPhoto = isCurrentMessagePhoto(ctx);
+  const needPhoto = p === 0 && !!coverId;
+
+  if (needPhoto) {
+    if (currentIsPhoto) return editPhotoCaption(ctx, text, kb);
+    return sendOrReplaceWithPhoto(ctx, coverId!, text, kb);
+  }
+  return editOrReplyText(ctx, text, kb);
+}
+
+async function ensureStoryAccessOrShowPay(ctx: MyContext, s: StoryLean): Promise<boolean> {
+  const u = ctx.state.user as any;
+  const userId = u?._id as Types.ObjectId | undefined;
+  if (!userId) {
+    await editOrReplyText(
+      ctx,
+      "Ошибка пользователя.",
+      Markup.inlineKeyboard([
+        [Markup.button.callback("↩︎ К списку", "read_stories")],
+        [Markup.button.callback("🏠 Главное меню", "main")],
+      ])
+    );
+    return false;
+  }
+
+  const price = Math.max(0, Math.floor(Number(s.entryTokens ?? 0)));
+  if (price <= 0) return true;
+
+  const { hasStoryAccess } = await import("./storyAccess.service.js");
+  const ok = await hasStoryAccess(userId, new Types.ObjectId(String(s._id)));
+
+  if (ok) return true;
+
+  const { renderBuyStoryConfirmScreen } = await import("../../app/ui/screens.buyStory.js");
+  const scr = await renderBuyStoryConfirmScreen({
+    ctx,
+    storyId: String(s._id),
+    title: s.title,
+    price,
+  });
+
+  await editOrReplyText(ctx, scr.text, scr.inline);
+  return false;
+}
+
 export function registerReadHandlers(bot: Telegraf<MyContext>) {
-  bot.action(/^story:([^:]+)$/, async (ctx) => {
+  bot.action(/^story:buy:([^:]+)$/, async (ctx) => {
     await ctx.answerCbQuery();
     const storyId = String(ctx.match[1]);
-
-    await openOrPage(ctx, storyId, 0);
 
     const s = await Story.findById(storyId).lean<StoryLean>();
     if (!s || !s.isPublished) {
@@ -145,49 +209,93 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
         "История недоступна.",
         Markup.inlineKeyboard([
           [Markup.button.callback("↩︎ К списку", "read_stories")],
+          [Markup.button.callback("🏠 Главное меню", "main")],
         ])
       );
     }
 
-    const ur = userRank(ctx);
-    if ((s.minRank ?? 0) > ur) {
+    const u = ctx.state.user as any;
+    const userId = u?._id as any;
+    if (!userId) {
       return editOrReplyText(
         ctx,
-        `★ Эта история доступна только подписчикам.\n\n<b>${esc(s.title)}</b>`,
+        "Ошибка пользователя.",
         Markup.inlineKeyboard([
           [Markup.button.callback("↩︎ К списку", "read_stories")],
+          [Markup.button.callback("🏠 Главное меню", "main")],
         ])
       );
     }
 
-    const coverId = extractFileId(s.coverUrl);
-    const parts = paginateStory(s.text || "", !!coverId);
-    const pages = Math.max(1, parts.length);
-    const page = 0;
-
-    const titleLine = `<b>${esc(s.title)}</b>${
-      (s.minRank ?? 0) >= 1 ? "  ★" : ""
-    }`;
-    const header =
-      pages > 1 ? `<i>(страница ${page + 1}/${pages})</i>\n\n` : "";
-    const body = esc(parts[page] || "");
-    const text = `${titleLine}\n\n${header}${body}`;
-
-    const kb = buildStoryKeyboard(s, page, pages);
-
-    if (coverId) {
-      return sendOrReplaceWithPhoto(ctx, coverId, text, kb);
-    } else {
-      return editOrReplyText(ctx, text, kb);
+    const price = Math.max(0, Math.floor(Number(s.entryTokens ?? 0)));
+    if (price <= 0) {
+      await openOrPage(ctx, storyId, 0);
+      return renderAndShowStoryPage(ctx, s, 0);
     }
+
+    const { tryBuyStoryAccess } = await import("./storyAccess.service.js");
+    const res = await tryBuyStoryAccess({
+      userId,
+      tgId: ctx.from?.id,
+      storyId,
+      price,
+    });
+
+    if (!res.ok && res.reason === "no_balance") {
+      return editOrReplyText(
+        ctx,
+        `😕 Недостаточно токенов.\n\nНужно: <b>${price}</b> токен(ов).`,
+        Markup.inlineKeyboard([
+          [Markup.button.callback("💰 Купить токены", "buy_tokens")],
+          [Markup.button.callback("⬅️ Назад", "read_stories")],
+          [Markup.button.callback("🏠 Главное меню", "main")],
+        ])
+      );
+    }
+
+    if (!res.ok) {
+      return editOrReplyText(
+        ctx,
+        "⚠️ Не удалось открыть доступ. Попробуйте позже.",
+        Markup.inlineKeyboard([
+          [Markup.button.callback("⬅️ Назад", "read_stories")],
+          [Markup.button.callback("🏠 Главное меню", "main")],
+        ])
+      );
+    }
+
+    await openOrPage(ctx, storyId, 0);
+    const fresh = await Story.findById(storyId).lean<StoryLean>();
+    return renderAndShowStoryPage(ctx, (fresh ?? s) as StoryLean, 0);
+  });
+
+  bot.action(/^story:([^:]+)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const storyId = String(ctx.match[1]);
+
+    const s = await Story.findById(storyId).lean<StoryLean>();
+    if (!s || !s.isPublished) {
+      return editOrReplyText(
+        ctx,
+        "История недоступна.",
+        Markup.inlineKeyboard([
+          [Markup.button.callback("↩︎ К списку", "read_stories")],
+          [Markup.button.callback("🏠 Главное меню", "main")],
+        ])
+      );
+    }
+
+    const ok = await ensureStoryAccessOrShowPay(ctx, s);
+    if (!ok) return;
+
+    await openOrPage(ctx, storyId, 0);
+    return renderAndShowStoryPage(ctx, s, 0);
   });
 
   bot.action(/^read:story:([^:]+):p:(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
     const storyId = String(ctx.match[1]);
-    let page = Number(ctx.match[2]);
-
-    await openOrPage(ctx, storyId, page);
+    const page = Number(ctx.match[2]);
 
     const s = await Story.findById(storyId).lean<StoryLean>();
     if (!s || !s.isPublished) {
@@ -196,103 +304,96 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
         "История недоступна.",
         Markup.inlineKeyboard([
           [Markup.button.callback("↩︎ К списку", "read_stories")],
+          [Markup.button.callback("🏠 Главное меню", "main")],
         ])
       );
     }
 
-    const coverId = extractFileId(s.coverUrl);
-    const parts = paginateStory(s.text || "", !!coverId);
-    const pages = Math.max(1, parts.length);
-    if (page > pages - 1) page = pages - 1;
-    if (page < 0) page = 0;
+    const ok = await ensureStoryAccessOrShowPay(ctx, s);
+    if (!ok) return;
 
-    const titleLine = `<b>${esc(s.title)}</b>${
-      (s.minRank ?? 0) >= 1 ? "  ★" : ""
-    }`;
-    const header =
-      pages > 1 ? `<i>(страница ${page + 1}/${pages})</i>\n\n` : "";
-    const body = esc(parts[page] || "");
-    const text = `${titleLine}\n\n${header}${body}`;
-
-    const kb = buildStoryKeyboard(s, page, pages);
-
-    const currentIsPhoto = isCurrentMessagePhoto(ctx);
-    const needPhoto = page === 0 && !!coverId;
-
-    if (needPhoto) {
-      if (currentIsPhoto) return editPhotoCaption(ctx, text, kb);
-      return sendOrReplaceWithPhoto(ctx, coverId!, text, kb);
-    } else {
-      return editOrReplyText(ctx, text, kb);
-    }
+    await openOrPage(ctx, storyId, page);
+    return renderAndShowStoryPage(ctx, s, page);
   });
 
-   bot.action(/^read:choose:([^:]+):(\d+)$/, async (ctx) => {
+  bot.action(/^read:choose:([^:]+):(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
     const storyId = String(ctx.match[1]);
     const idx = Number(ctx.match[2]);
 
-    const u = ctx.state.user as any
-    const userId = u?._id
-    const tgId = u?.tgId
+    const u = ctx.state.user as any;
+    const userId = u?._id;
+    const tgId = u?.tgId;
 
-    const s = await Story.findById(storyId)
+    const s = await Story.findById(storyId);
     if (!s || !s.isPublished) {
       return editOrReplyText(
         ctx,
         "История недоступна.",
         Markup.inlineKeyboard([
           [Markup.button.callback("↩︎ К списку", `read:list_from:${storyId}`)],
+          [Markup.button.callback("🏠 Главное меню", "main")],
         ])
       );
     }
-    const ending = s.endings?.[idx]
+    const ending = s.endings?.[idx];
     if (!ending) {
-      return editOrReplyText(ctx, "Вариант недоступен.", Markup.inlineKeyboard([[Markup.button.callback("↩︎ Назад", `story:${storyId}`)]]))
+      return editOrReplyText(
+        ctx,
+        "Вариант недоступен.",
+        Markup.inlineKeyboard([
+          [Markup.button.callback("↩︎ Назад", `story:${storyId}`)],
+          [Markup.button.callback("🏠 Главное меню", "main")],
+        ])
+      );
     }
     if (!userId) {
-      return editOrReplyText(ctx, "Ошибка пользователя.", Markup.inlineKeyboard([[Markup.button.callback("↩︎ Назад", `story:${storyId}`)]]))
+      return editOrReplyText(
+        ctx,
+        "Ошибка пользователя.",
+        Markup.inlineKeyboard([
+          [Markup.button.callback("↩︎ Назад", `story:${storyId}`)],
+          [Markup.button.callback("🏠 Главное меню", "main")],
+        ])
+      );
     }
 
-    const { Types } = await import("mongoose")
-    const { isAllPremium, hasAccessToEnding, tryLockFirstChoice } = await import("./endingChoice.service.js")
+    const { isAllPremium, hasAccessToEnding, tryLockFirstChoice } =
+      await import("./endingChoice.service.js");
 
-    const premiumAll = isAllPremium(ctx)
+    const premiumAll = isAllPremium(ctx);
     if (premiumAll) {
-      await chooseEnding(ctx, storyId, idx)
+      await chooseEnding(ctx, storyId, idx);
       const { text, inline } = await renderReadEndingScreen(ctx);
-      const safe = esc(text);
-      return editOrReplyText(ctx, safe, inline);
+      return editOrReplyText(ctx, esc(text), inline);
     }
 
-    const access = await hasAccessToEnding(ctx, userId, s._id, ending._id)
-
+    const access = await hasAccessToEnding(ctx, userId, s._id, ending._id);
     if (access === "chosen" || access === "extra") {
-      await chooseEnding(ctx, storyId, idx)
+      await chooseEnding(ctx, storyId, idx);
       const { text, inline } = await renderReadEndingScreen(ctx);
-      const safe = esc(text);
-      return editOrReplyText(ctx, safe, inline);
+      return editOrReplyText(ctx, esc(text), inline);
     }
 
-    const lockRes = await tryLockFirstChoice(userId as any, tgId, s._id, ending._id)
+    const lockRes = await tryLockFirstChoice(userId as any, tgId, s._id, ending._id);
     if (lockRes === "lockedNow" || lockRes === "alreadySame") {
-      await chooseEnding(ctx, storyId, idx)
+      await chooseEnding(ctx, storyId, idx);
       const { text, inline } = await renderReadEndingScreen(ctx);
-      const safe = esc(text);
-      return editOrReplyText(ctx, safe, inline);
+      return editOrReplyText(ctx, esc(text), inline);
     }
 
-    const { renderBuyEndingConfirmScreen } = await import("../../app/ui/screens.buyEnding.js")
-    const scr = await renderBuyEndingConfirmScreen(ctx, storyId, idx, userId)
-    return editOrReplyText(ctx, scr.text, scr.inline)
+    const { renderBuyEndingConfirmScreen } =
+      await import("../../app/ui/screens.buyEnding.js");
+    const scr = await renderBuyEndingConfirmScreen(ctx, storyId, idx, userId);
+    return editOrReplyText(ctx, scr.text, scr.inline);
   });
 
   bot.action(/^read:end:([^:]+):(\d+):p:(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
     const { text, inline } = await renderReadEndingScreen(ctx);
-    const safe = esc(text);
-    return editOrReplyText(ctx, safe, inline);
+    return editOrReplyText(ctx, esc(text), inline);
   });
+
 
   bot.action(/^read:list_from:([^:]+)$/, async (ctx) => {
     await ctx.answerCbQuery();
@@ -305,7 +406,6 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
       ctx.callbackQuery && "message" in ctx.callbackQuery
         ? (ctx.callbackQuery as any).message
         : undefined;
-
     if (chatId && msg?.message_id) {
       try {
         await ctx.telegram.deleteMessage(chatId, msg.message_id);
@@ -314,17 +414,6 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     }
 
     await navigate(ctx, "readStories" as any);
-  });
-
-  bot.action("subscribe", async (ctx) => {
-    await ctx.answerCbQuery();
-    await editOrReplyText(
-      ctx,
-      "⭐ Подписка скоро будет доступна.\n\nОформите премиум, чтобы читать все концовки.",
-      Markup.inlineKeyboard([
-        [Markup.button.callback("↩︎ К списку", "read_stories")],
-      ])
-    );
   });
 
   bot.action("noop", async (ctx) => ctx.answerCbQuery());

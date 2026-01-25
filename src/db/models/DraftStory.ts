@@ -21,6 +21,7 @@ const DraftStorySchema = new Schema(
     title: { type: String },
     intro: { type: String },
     endings: { type: [DraftEndingSchema], default: [] },
+    entryTokens: { type: Number, default: 0, enum: [0, 1, 3, 5] },
     minRank: { type: Number, min: 0, max: 3, default: 0 },
     pendingInput: { type: Object, default: null },
   },

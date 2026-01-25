@@ -50,7 +50,7 @@ const StorySchema = new mongoose.Schema(
     coverUrl: { type: String },
 
     endings: { type: [EndingSchema], default: [] },
-
+    entryTokens: { type: Number, default: 0, enum: [0, 1, 3, 5], index: true },
     isPublished: { type: Boolean, default: false, index: true },
     minRank: { type: Number, min: 0, max: 3, default: 0, index: true },
 
