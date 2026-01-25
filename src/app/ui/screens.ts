@@ -10,12 +10,11 @@ import { getBalance } from "../../features/tokens/wallet.service.js";
 import { Types } from "mongoose";
 
 const TOKEN_PACKS = [
-  { id: "p2",  tokens: 2,  priceRub: 35 },  
-  { id: "p5",  tokens: 5,  priceRub: 80 },   
-  { id: "p10", tokens: 10, priceRub: 150 },
-  { id: "p20", tokens: 20, priceRub: 280 },
-  { id: "p35", tokens: 35, priceRub: 430 },
-  { id: "p50", tokens: 50, priceRub: 600 },  
+  { id: "p6", tokens: 6, priceRub: 100 },
+  { id: "p13", tokens: 13, priceRub: 200 },
+  { id: "p21", tokens: 21, priceRub: 333 },
+  { id: "p35", tokens: 35, priceRub: 500 },
+  { id: "p80", tokens: 80, priceRub: 1100 },  
 ] as const;
 
 export type TokenPackId = (typeof TOKEN_PACKS)[number]["id"];
@@ -98,7 +97,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     const rows = TOKEN_PACKS.map((p) => [
       Markup.button.callback(
         `${p.tokens} ток. — ${p.priceRub}₽`,
-        `buy_tokens:${p.id}`
+        `buy_tokens:confirm:${p.id}`
       ),
     ]);
 
