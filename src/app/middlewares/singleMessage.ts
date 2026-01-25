@@ -42,6 +42,17 @@ export const singleMessage: MiddlewareFn<MyContext> = async (ctx, next) => {
     return sent;
   };
 
+  state.sendSingleInvoice = async (invoice: any) => {
+    if (!chatId) return (ctx as any).replyWithInvoice(invoice);
+
+    const prev = lastByChat.get(chatId)?.messageId;
+    if (prev) await safeDelete(ctx, chatId, prev);
+
+    const sent = await (ctx as any).replyWithInvoice(invoice);
+    lastByChat.set(chatId, { messageId: sent.message_id, updatedAt: Date.now() });
+    return sent;
+  };
+
   state.rememberMessageId = (msgId: number) => {
     if (!chatId) return;
     lastByChat.set(chatId, { messageId: msgId, updatedAt: Date.now() });
@@ -67,3 +78,5 @@ export function getLastMessageId(chatId: number) {
 export function forgetChat(chatId: number) {
   lastByChat.delete(chatId);
 }
+
+
