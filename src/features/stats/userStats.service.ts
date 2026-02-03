@@ -1,111 +1,108 @@
-import { Types } from "mongoose";
-import { UserStats, type UserStatsDoc } from "../../db/models/UserStats.js";
-import { Story } from "../../db/models/Story.js";
+import mongoose, { Types } from "mongoose";
+import { UserWallet } from "../../db/models/UserWallet.js";
+import { UserStoryAccess } from "../../db/models/UserStoryAccess.js";
+import { AudioPurchase } from "../../db/models/AudioPurchase.js";
+import { StoryReadSession } from "../../db/models/StoryReadSession.js";
 
-type TopEntry = {
-  storyId: string;
-  title?: string;
-  count: number;
-  label?: string;
+type Args = {
+  userId: Types.ObjectId;
+  tgId?: number;
 };
 
-export async function getUserStatsByTgId(
-  tgId?: number | null
-): Promise<UserStatsDoc | null> {
-  if (!tgId) return null;
-  const doc = await UserStats.findOne({ tgId }).lean<UserStatsDoc>().exec();
-  return doc ?? null;
+type UserProfileStats = {
+  keys: {
+    balance: number;
+    spentOnStories: number; 
+    spentOnAudio: number;   
+    spentTotal: number;
+  };
+  reading: {
+    sessionsTotal: number;        
+    uniqueStoriesOpened: number;  
+    completedSessions: number;    
+    droppedSessions: number;      
+  };
+  endings: {
+    purchases: number; 
+  };
+  audio: {
+    purchases: number; 
+  };
+};
+
+function num(n: any): number {
+  const x = Number(n);
+  return Number.isFinite(x) ? x : 0;
 }
 
-export async function getTopRereads(
-  stats: UserStatsDoc | null,
-  limit = 3
-): Promise<TopEntry[]> {
-  if (!stats?.rereads || typeof stats.rereads !== "object") return [];
+async function sumField(
+  collection: "UserStoryAccess" | "AudioPurchase",
+  userId: Types.ObjectId,
+  field: string
+): Promise<number> {
+  const Model = collection === "UserStoryAccess" ? UserStoryAccess : AudioPurchase;
 
-  const rows: TopEntry[] = Object.entries(stats.rereads as Record<string, any>)
-    .filter(([_, v]) => typeof v === "number" && v > 0)
-    .map(([storyId, count]) => ({ storyId, count: Number(count) }));
+  const rows = await Model.aggregate([
+    { $match: { userId } },
+    { $group: { _id: null, s: { $sum: `$${field}` } } },
+  ]).exec();
 
-  rows.sort((a, b) => b.count - a.count);
-  const top = rows.slice(0, limit);
-
-  const ids = top
-    .map((x) =>
-      Types.ObjectId.isValid(x.storyId) ? new Types.ObjectId(x.storyId) : null
-    )
-    .filter(Boolean) as Types.ObjectId[];
-
-  if (ids.length) {
-    const stories = await Story.find({ _id: { $in: ids } }, { title: 1 })
-      .lean()
-      .exec();
-    const map = new Map(stories.map((s) => [String(s._id), s.title]));
-    for (const t of top) {
-      if (map.has(t.storyId)) t.title = map.get(t.storyId);
-    }
-  }
-  return top;
+  return num(rows?.[0]?.s);
 }
 
-export async function getTopEndingChoices(
-  stats: UserStatsDoc | null,
-  limit = 3
-): Promise<TopEntry[]> {
-  if (!stats?.endingChoices || typeof stats.endingChoices !== "object")
-    return [];
+async function countEndingPurchases(userId: Types.ObjectId): Promise<number> {
 
-  type RawRow = { storyId: string; endingKey?: string; count: number };
-  const collected: RawRow[] = [];
+  const col = mongoose.connection.collection("userendingchoices");
 
-  for (const [k, v] of Object.entries(
-    stats.endingChoices as Record<string, any>
-  )) {
-    if (typeof v === "number") {
-      const { storyId, endingKey } = splitKey(k);
-      collected.push({ storyId, endingKey, count: v });
-    } else if (v && typeof v === "object") {
-      const storyId = k;
-      for (const [endingKey, cnt] of Object.entries(v)) {
-        if (typeof cnt === "number") {
-          collected.push({ storyId, endingKey, count: cnt });
-        }
-      }
-    }
-  }
-
-  collected.sort((a, b) => b.count - a.count);
-  const top = collected.slice(0, limit);
-
-  const ids = top
-    .map((x) =>
-      Types.ObjectId.isValid(x.storyId) ? new Types.ObjectId(x.storyId) : null
-    )
-    .filter(Boolean) as Types.ObjectId[];
-
-  const result: TopEntry[] = top.map((t) => ({
-    storyId: t.storyId,
-    count: t.count,
-    label: t.endingKey,
-  }));
-
-  if (ids.length) {
-    const stories = await Story.find({ _id: { $in: ids } }, { title: 1 })
-      .lean()
-      .exec();
-    const map = new Map(stories.map((s) => [String(s._id), s.title]));
-    for (const r of result) {
-      if (map.has(r.storyId)) r.title = map.get(r.storyId);
-    }
-  }
-
-  return result;
+  const n = await col.countDocuments({ userId } as any);
+  return num(n);
 }
 
-function splitKey(k: string): { storyId: string; endingKey?: string } {
-  const m = k.match(/([a-f0-9]{24})(?:[#:|/_-]?(.+))?$/i);
-  if (m) {
-    return { storyId: m[1], endingKey: m[2] };
-  }
-  return { storyId: k };
+export async function getUserProfileStats(args: Args): Promise<UserProfileStats> {
+  const { userId } = args;
+
+  const w = await UserWallet.findOne({ userId }, { tokens: 1 }).lean().exec();
+  const balance = num((w as any)?.tokens);
+
+  const [spentOnStories, spentOnAudio] = await Promise.all([
+    sumField("UserStoryAccess", userId, "paidTokens"),
+    sumField("AudioPurchase", userId, "paidTokens"),
+  ]);
+
+  const [sessionsTotal, uniqueStoryIds, completedSessions, droppedSessions] =
+    await Promise.all([
+      StoryReadSession.countDocuments({ userId }).exec(),
+      StoryReadSession.distinct("storyId", { userId }).exec(),
+      StoryReadSession.countDocuments({ userId, completed: true }).exec(),
+      StoryReadSession.countDocuments({
+        userId,
+        completed: false,
+        finishedAt: { $exists: true },
+      }).exec(),
+    ]);
+
+  const endingsPurchases = await countEndingPurchases(userId);
+
+  const audioPurchases = await AudioPurchase.countDocuments({ userId }).exec();
+
+  return {
+    keys: {
+      balance,
+      spentOnStories,
+      spentOnAudio,
+      spentTotal: spentOnStories + spentOnAudio,
+    },
+    reading: {
+      sessionsTotal: num(sessionsTotal),
+      uniqueStoriesOpened: Array.isArray(uniqueStoryIds) ? uniqueStoryIds.length : 0,
+      completedSessions: num(completedSessions),
+      droppedSessions: num(droppedSessions),
+    },
+    endings: {
+      purchases: endingsPurchases,
+    },
+    audio: {
+      purchases: num(audioPurchases),
+    },
+  };
 }

@@ -1,10 +1,10 @@
 import { buildInlineMain } from "./menus.js";
 import { renderAddStoryTextScreen } from "./screens.addStoryText.js";
 import { renderReadStoriesScreen } from "./screens.readStories.js";
-import { renderListenStoriesScreen } from "./screens.listenStories.js"; // ✅ добавили
 import { renderProfileUserStatsScreen } from "./screens.profileStats.js";
+import { renderListenStoriesScreen } from "./screens.listenStories.js";
 import { renderAdminStatsAudioScreen } from "./screens.adminStats.js";
-import { isAdmin, isPremium } from "../../shared/utils.js";
+import { isAdmin } from "../../shared/utils.js";
 import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
 import { getBalance } from "../../features/tokens/wallet.service.js";
@@ -23,7 +23,6 @@ export type TokenPackId = (typeof TOKEN_PACKS)[number]["id"];
 export type ScreenId =
   | "main"
   | "profile"
-  | "profileSubscription"
   | "profileUserStats"
   | "admin"
   | "storiesList"
@@ -31,7 +30,7 @@ export type ScreenId =
   | "addStoryText"
   | "readStories"
   | "buyTokens"
-  | "listenStories"; 
+  | "listenStories";
 
 export type ScreenPayload = {
   text: string;
@@ -43,35 +42,38 @@ export type ScreenPayload = {
 
 type ScreenRenderer = (ctx: MyContext) => Promise<ScreenPayload> | ScreenPayload;
 
-function formatDate(d?: string | number | Date) {
-  if (!d) return "-";
-  const dt = new Date(d);
-  return `${String(dt.getDate()).padStart(2, "0")}.${String(dt.getMonth() + 1).padStart(
-    2,
-    "0"
-  )}.${dt.getFullYear()}`;
-}
-
 const screens: Record<ScreenId, ScreenRenderer> = {
   main: (ctx) => ({
     text: `Добро пожаловать в *Юля С "Bot"*, ${
-      ctx.from?.first_name || "дорогой подписчик!"
-    }!  В этом боте ты можешь прочитать уникальные истории. Приятного пользования🌸`,
+      ctx.from?.first_name || "друг!"
+    }!\n\nЗдесь ты можешь читать истории и слушать ГС-истории. Приятного пользования 🌸`,
     inline: buildInlineMain(ctx.state.user),
     setReplyKeyboard: true,
     replyNoticeText: "",
   }),
 
-  profile: (ctx) => ({
-    text: `Твой профиль\n\nЗдесь ты можешь посмотреть статус подписки и личную статистику.`,
-    inline: Markup.inlineKeyboard([
-      [
-        Markup.button.callback("Подписка", "profile:subscription"),
-        Markup.button.callback("Статистика", "profile:statistics"),
-      ],
-      [Markup.button.callback("Назад", "main")],
-    ]),
-  }),
+  profile: async (ctx) => {
+    const u = ctx.state.user;
+    const userId = (u as any)?._id as Types.ObjectId | undefined;
+
+    let balanceText = "Баланс: -";
+    if (userId) {
+      const balance = await getBalance(userId);
+      balanceText = `Баланс ключей: <b>${balance}</b>`;
+    }
+
+    return {
+      text:
+        `Твой профиль\n\n` +
+        `${balanceText}\n\n` +
+        `Здесь можно посмотреть личную статистику.`,
+      inline: Markup.inlineKeyboard([
+        [Markup.button.callback("📊 Статистика", "profile:statistics")],
+        [Markup.button.callback("🏠 На главную", "main")],
+      ]),
+      parseMode: "HTML",
+    };
+  },
 
   buyTokens: async (ctx) => {
     const u = ctx.state.user;
@@ -84,8 +86,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     }
 
     const legend =
-      "ℹ️ Ключи нужны, чтобы открывать дополнительные концовки.\n" +
-      "Первая концовка в истории всегда бесплатна, остальные можно открыть за ключи.\n";
+      "ℹ️ Ключи нужны, чтобы открывать дополнительные концовки и платные истории.\n";
 
     const text =
       "💰 <b>Покупка ключей</b>\n\n" +
@@ -94,7 +95,10 @@ const screens: Record<ScreenId, ScreenRenderer> = {
       balanceText;
 
     const rows = TOKEN_PACKS.map((p) => [
-      Markup.button.callback(`${p.tokens} ключ(ей) — ${p.priceRub}₽`, `buy_tokens:confirm:${p.id}`),
+      Markup.button.callback(
+        `${p.tokens} ключ(ей) — ${p.priceRub}₽`,
+        `buy_tokens:confirm:${p.id}`
+      ),
     ]);
 
     rows.push([Markup.button.callback("↩︎ В главное меню", "main")]);
@@ -106,52 +110,28 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     };
   },
 
-  profileSubscription: (ctx) => {
-    const u = ctx.state.user;
-    const premium = isPremium(u);
-    const expiresAt = (u as any)?.premiumUntil;
-
-    const base = premium
-      ? `✅ У тебя активная подписка.\nДействует до: <b>${formatDate(expiresAt)}</b>.`
-      : `❌ Подписка не активна.`;
-
+  admin: (ctx) => {
+    if (!ctx.state.user || !isAdmin(ctx.state.user)) {
+      return {
+        text: "Доступ только для админа.",
+        inline: buildInlineMain(undefined),
+      };
+    }
     return {
-      text: `${base}\n\nПодписка открывает дополнительные истории и будущие фичи.`,
+      text: "Админ-панель",
       inline: Markup.inlineKeyboard([
-        [Markup.button.callback("↩︎ В профиль", "profile")],
-        [Markup.button.callback("🏠 На главную", "main")],
+        [Markup.button.callback("🧑‍💻 Статистика ГС-историй", "admin:statistics_audio")],
+        [Markup.button.callback("Обложки", "admin:cover_list")],
+        [Markup.button.callback("📜 Добавить историю", "admin:add_story_text")],
+        [Markup.button.callback("🎧 Добавить ГС-историю", "admin:add_audio")],
+        [Markup.button.callback("📨 Добавить файл", "admin:import_file")],
+        [Markup.button.callback("🗑 Удалить историю", "admin:delete_list")],
+        [Markup.button.callback("📣 Рассылка", "admin:broadcast")],
+        [Markup.button.callback("📢 Каналы", "admin:channels")],
+        [Markup.button.callback("Назад", "main")],
       ]),
-      parseMode: "HTML",
     };
   },
-
-  admin: (ctx) => {
-  if (!ctx.state.user || !isAdmin(ctx.state.user)) {
-    return {
-      text: "Доступ только для админа.",
-      inline: buildInlineMain(undefined),
-    };
-  }
-  return {
-    text: "Админ-панель",
-    inline: Markup.inlineKeyboard([
-      [Markup.button.callback("🧑‍💻СТАТИСТИКА ГС-историй🧑‍💻", "admin:statistics_audio")],
-      [Markup.button.callback("Обложки", "admin:cover_list")],
-      [
-        Markup.button.callback("📜ДОБАВИТЬ ИСТОРИЮ📜", "admin:add_story_text"),
-      ],
-      [
-        Markup.button.callback("🎧 ДОБАВИТЬ ГС-ИСТОРИЮ 🎧", "admin:add_audio"),
-      ],
-
-      [Markup.button.callback("📨Добавить файл📨", "admin:import_file")],
-      [Markup.button.callback("🗑Удалить историю🗑", "admin:delete_list")],
-      [Markup.button.callback("📣 Рассылка", "admin:broadcast")],
-      [Markup.button.callback("📢 Каналы", "admin:channels")],
-      [Markup.button.callback("Назад", "main")],
-    ]),
-  };
-},
 
   storiesList: () => ({
     text: "Список историй (заглушка)",
@@ -159,9 +139,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
   }),
 
   addStoryText: (ctx) => renderAddStoryTextScreen(ctx),
-
   readStories: (ctx) => renderReadStoriesScreen(ctx),
-
   listenStories: (ctx) => renderListenStoriesScreen(ctx),
 
   profileUserStats: (ctx) => renderProfileUserStatsScreen(ctx),

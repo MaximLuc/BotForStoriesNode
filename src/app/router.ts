@@ -42,7 +42,6 @@ export function registerRouter(bot: Telegraf<MyContext>) {
 
   bindDual(bot, { text: "Профиль", action: "profile" }, async (ctx) => navigate(ctx, "profile"));
 
-  bot.action("profile:subscription", async (ctx) => navigate(ctx, "profileSubscription"));
   bot.action("profile:statistics", async (ctx) => navigate(ctx, "profileUserStats"));
 
   bindDual(bot, { text: "Админка", action: "admin" }, async (ctx) => navigate(ctx, "admin"));
