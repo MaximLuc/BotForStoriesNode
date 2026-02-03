@@ -1,6 +1,7 @@
 import { buildInlineMain } from "./menus.js";
 import { renderAddStoryTextScreen } from "./screens.addStoryText.js";
 import { renderReadStoriesScreen } from "./screens.readStories.js";
+import { renderListenStoriesScreen } from "./screens.listenStories.js"; // ✅ добавили
 import { renderProfileUserStatsScreen } from "./screens.profileStats.js";
 import { renderAdminStatsScreen } from "./screens.adminStats.js";
 import { isAdmin, isPremium } from "../../shared/utils.js";
@@ -14,12 +15,10 @@ const TOKEN_PACKS = [
   { id: "p13", tokens: 13, priceRub: 200 },
   { id: "p21", tokens: 21, priceRub: 333 },
   { id: "p35", tokens: 35, priceRub: 500 },
-  { id: "p80", tokens: 80, priceRub: 1100 },  
+  { id: "p80", tokens: 80, priceRub: 1100 },
 ] as const;
 
 export type TokenPackId = (typeof TOKEN_PACKS)[number]["id"];
-
-
 
 export type ScreenId =
   | "main"
@@ -31,7 +30,8 @@ export type ScreenId =
   | "statistics"
   | "addStoryText"
   | "readStories"
-  | "buyTokens";
+  | "buyTokens"
+  | "listenStories"; 
 
 export type ScreenPayload = {
   text: string;
@@ -41,23 +41,22 @@ export type ScreenPayload = {
   parseMode?: "Markdown" | "HTML";
 };
 
-type ScreenRenderer = (
-  ctx: MyContext
-) => Promise<ScreenPayload> | ScreenPayload;
+type ScreenRenderer = (ctx: MyContext) => Promise<ScreenPayload> | ScreenPayload;
 
 function formatDate(d?: string | number | Date) {
   if (!d) return "-";
   const dt = new Date(d);
-  return `${String(dt.getDate()).padStart(2, "0")}.${String(
-    dt.getMonth() + 1
-  ).padStart(2, "0")}.${dt.getFullYear()}`;
+  return `${String(dt.getDate()).padStart(2, "0")}.${String(dt.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}.${dt.getFullYear()}`;
 }
 
 const screens: Record<ScreenId, ScreenRenderer> = {
   main: (ctx) => ({
     text: `Добро пожаловать в *Юля С "Bot"*, ${
       ctx.from?.first_name || "дорогой подписчик!"
-    }!  В этом боте ты можешь прочитать уникальные истории, финал которых зависит только от твоего выбора. Приятного пользования🌸`,
+    }!  В этом боте ты можешь прочитать уникальные истории. Приятного пользования🌸`,
     inline: buildInlineMain(ctx.state.user),
     setReplyKeyboard: true,
     replyNoticeText: "",
@@ -81,24 +80,21 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     let balanceText = "";
     if (userId) {
       const balance = await getBalance(userId);
-      balanceText = `\n\nТекущий баланс: <b>${balance}</b> токен(ов).`;
+      balanceText = `\n\nТекущий баланс: <b>${balance}</b> ключ(ей).`;
     }
 
     const legend =
-      "ℹ️ Токены нужны, чтобы открывать дополнительные концовки.\n" +
-      "Первая концовка в истории всегда бесплатна, остальные можно открыть за токены.\n";
+      "ℹ️ Ключи нужны, чтобы открывать дополнительные концовки.\n" +
+      "Первая концовка в истории всегда бесплатна, остальные можно открыть за ключи.\n";
 
     const text =
-      "💰 <b>Покупка токенов</b>\n\n" +
+      "💰 <b>Покупка ключей</b>\n\n" +
       legend +
       "Выберите подходящий пакет:" +
       balanceText;
 
     const rows = TOKEN_PACKS.map((p) => [
-      Markup.button.callback(
-        `${p.tokens} ток. — ${p.priceRub}₽`,
-        `buy_tokens:confirm:${p.id}`
-      ),
+      Markup.button.callback(`${p.tokens} ключ(ей) — ${p.priceRub}₽`, `buy_tokens:confirm:${p.id}`),
     ]);
 
     rows.push([Markup.button.callback("↩︎ В главное меню", "main")]);
@@ -114,10 +110,9 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     const u = ctx.state.user;
     const premium = isPremium(u);
     const expiresAt = (u as any)?.premiumUntil;
+
     const base = premium
-      ? `✅ У тебя активная подписка.\nДействует до: <b>${formatDate(
-          expiresAt
-        )}</b>.`
+      ? `✅ У тебя активная подписка.\nДействует до: <b>${formatDate(expiresAt)}</b>.`
       : `❌ Подписка не активна.`;
 
     return {
@@ -126,35 +121,37 @@ const screens: Record<ScreenId, ScreenRenderer> = {
         [Markup.button.callback("↩︎ В профиль", "profile")],
         [Markup.button.callback("🏠 На главную", "main")],
       ]),
+      parseMode: "HTML",
     };
   },
 
   admin: (ctx) => {
-    if (!ctx.state.user || !isAdmin(ctx.state.user)) {
-      return {
-        text: "Доступ только для админа.",
-        inline: buildInlineMain(undefined),
-      };
-    }
+  if (!ctx.state.user || !isAdmin(ctx.state.user)) {
     return {
-      text: "Админ-панель",
-      inline: Markup.inlineKeyboard([
-        [Markup.button.callback("🧑‍💻СТАТИСТИКА🧑‍💻", "admin:statistics")],
-        [Markup.button.callback("Обложки", "admin:cover_list")],
-        [
-          Markup.button.callback(
-            "📜ДОБАВИТЬ ИСТОРИЮ📜",
-            "admin:add_story_text"
-          ),
-        ],
-        [Markup.button.callback("📨Добавить файл📨", "admin:import_file")],
-        [Markup.button.callback("🗑Удалить историю🗑", "admin:delete_list")],
-        [Markup.button.callback('📣 Рассылка', 'admin:broadcast')],
-        [Markup.button.callback("📢 Каналы", "admin:channels")],
-        [Markup.button.callback("Назад", "main")],
-      ]),
+      text: "Доступ только для админа.",
+      inline: buildInlineMain(undefined),
     };
-  },
+  }
+  return {
+    text: "Админ-панель",
+    inline: Markup.inlineKeyboard([
+      [Markup.button.callback("🧑‍💻СТАТИСТИКА🧑‍💻", "admin:statistics")],
+      [Markup.button.callback("Обложки", "admin:cover_list")],
+      [
+        Markup.button.callback("📜ДОБАВИТЬ ИСТОРИЮ📜", "admin:add_story_text"),
+      ],
+      [
+        Markup.button.callback("🎧 ДОБАВИТЬ ГС-ИСТОРИЮ 🎧", "admin:add_audio"),
+      ],
+
+      [Markup.button.callback("📨Добавить файл📨", "admin:import_file")],
+      [Markup.button.callback("🗑Удалить историю🗑", "admin:delete_list")],
+      [Markup.button.callback("📣 Рассылка", "admin:broadcast")],
+      [Markup.button.callback("📢 Каналы", "admin:channels")],
+      [Markup.button.callback("Назад", "main")],
+    ]),
+  };
+},
 
   storiesList: () => ({
     text: "Список историй (заглушка)",
@@ -165,6 +162,8 @@ const screens: Record<ScreenId, ScreenRenderer> = {
 
   readStories: (ctx) => renderReadStoriesScreen(ctx),
 
+  listenStories: (ctx) => renderListenStoriesScreen(ctx),
+
   profileUserStats: (ctx) => renderProfileUserStatsScreen(ctx),
 
   statistics: (ctx) => renderAdminStatsScreen(ctx),
@@ -172,7 +171,6 @@ const screens: Record<ScreenId, ScreenRenderer> = {
 
 export function getScreen(ctx: MyContext, id: ScreenId): ScreenPayload {
   const r = screens[id];
-  if (!r)
-    return { text: "Экран не найден", inline: buildInlineMain(undefined) };
+  if (!r) return { text: "Экран не найден", inline: buildInlineMain(undefined) };
   return r(ctx) as ScreenPayload;
 }

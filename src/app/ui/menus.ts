@@ -18,9 +18,13 @@ export function buildReplyMain(user?: UserDoc) {
 
 export function buildInlineMain(user?: UserDoc) {
   const rows = [
-    [Markup.button.callback("✨МОЙ ПРОФИЛЬ✨", "profile")],
-    [Markup.button.callback("📖ВСЕ ИСТОРИИ📖", "read_stories")],
-    [Markup.button.callback("💰 Купить токены", "buy_tokens")],
+    [Markup.button.callback("✨ МОЙ ПРОФИЛЬ ✨", "profile")],
+
+    [Markup.button.callback("📖 ЧИТАТЬ ИСТОРИИ", "read_stories")],
+
+    [Markup.button.callback("🎧 СЛУШАТЬ ИСТОРИИ", "listen_stories")],
+
+    [Markup.button.callback("💰 Купить ключи", "buy_tokens")],
     [Markup.button.callback("Помощь", "help")],
     [Markup.button.callback("Техподдержка", "support")],
   ] as any[];
@@ -30,5 +34,6 @@ export function buildInlineMain(user?: UserDoc) {
 
   return Markup.inlineKeyboard(rows);
 }
+
 
 

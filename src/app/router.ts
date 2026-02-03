@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import type { MyContext } from "../shared/types.js";
 import { navigate } from "./ui/navigate.js";
 import { respond } from "./ui/respond.js";
+
 import { registerAddStoryTextActions } from "../features/stories/addStoryText.actions.js";
 import { registerCoverActions } from "../features/stories/cover.actions.js";
 import { registerReadHandlers } from "../features/reading/read.handlers.js";
@@ -13,12 +14,17 @@ import { registerAdminDeleteHandlers } from "../features/stories/adminDelete.han
 import { registerAdminCoverHandlers } from "../features/stories/adminCover.handlers.js";
 import { registerBroadcastActions } from "../features/broadcast/broadcast.actions.js";
 import { registerBroadcastSweeper } from "../features/broadcast/broadcast.sweeper.js";
+
 import { registerSubscriptionAdminActions } from "../features/subscription/subscription.actions.js";
 import { registerSubscriptionUserActions } from "../features/subscription/subscription.user.actions.js";
+
 import { registerBuyEndingActions } from "../features/reading/buyEnding.actions.js";
 import { isAdmin } from "../shared/utils.js";
 import { addTokens } from "../features/tokens/wallet.service.js";
 import { registerBuyTokensActions } from "../features/tokens/buyTokens.actions.js";
+
+import { registerAudioHandlers } from "../features/audio/audio.handlers.js";
+import { registerAudioAdmin } from "../features/audio/audio.admin.js";
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -32,49 +38,37 @@ function bindDual(
 export function registerRouter(bot: Telegraf<MyContext>) {
   bot.start(async (ctx) => navigate(ctx, "main"));
 
-  bindDual(bot, { text: "Меню", action: "main" }, async (ctx) =>
-    navigate(ctx, "main")
+  bindDual(bot, { text: "Меню", action: "main" }, async (ctx) => navigate(ctx, "main"));
+
+  bindDual(bot, { text: "Профиль", action: "profile" }, async (ctx) => navigate(ctx, "profile"));
+
+  bot.action("profile:subscription", async (ctx) => navigate(ctx, "profileSubscription"));
+  bot.action("profile:statistics", async (ctx) => navigate(ctx, "profileUserStats"));
+
+  bindDual(bot, { text: "Админка", action: "admin" }, async (ctx) => navigate(ctx, "admin"));
+
+  bindDual(bot, { text: "Читать истории", action: "read_stories" }, async (ctx) =>
+    navigate(ctx, "readStories")
   );
 
-  bindDual(bot, { text: "Профиль", action: "profile" }, async (ctx) =>
-    navigate(ctx, "profile")
-  );
-
-  bot.action("profile:subscription", async (ctx) =>
-    navigate(ctx, "profileSubscription")
-  );
-  bot.action("profile:statistics", async (ctx) =>
-    navigate(ctx, "profileUserStats")
-  );
-
-  bindDual(bot, { text: "Админка", action: "admin" }, async (ctx) =>
-    navigate(ctx, "admin")
-  );
-
-  bindDual(
-    bot,
-    { text: "Читать истории", action: "read_stories" },
-    async (ctx) => navigate(ctx, "readStories")
+  bindDual(bot, { text: "Слушать истории", action: "listen_stories" }, async (ctx) =>
+    navigate(ctx, "listenStories")
   );
 
   bot.action("admin:stories", async (ctx) => navigate(ctx, "storiesList"));
   bot.action("admin:statistics", async (ctx) => navigate(ctx, "statistics"));
 
-  bindDual(
-    bot,
-    { text: "Добавить историю (текстом)", action: "admin:add_story_text" },
-    async (ctx) => navigate(ctx, "addStoryText")
+  bindDual(bot, { text: "Добавить историю (текстом)", action: "admin:add_story_text" }, async (ctx) =>
+    navigate(ctx, "addStoryText")
   );
 
-  bindDual(
-    bot,
-    { text: "Купить токены", action: "buy_tokens" },
-    async (ctx) => navigate(ctx, "buyTokens")
+  bindDual(bot, { text: "Купить ключи", action: "buy_tokens" }, async (ctx) =>
+    navigate(ctx, "buyTokens")
   );
 
-  bot.action(/^read_stories:page:(\d+)$/, async (ctx) =>
-    navigate(ctx, "readStories")
-  );
+  bot.action(/^read_stories:page:(\d+)$/, async (ctx) => navigate(ctx, "readStories"));
+
+  bot.action(/^listen_stories:page:(\d+)$/, async (ctx) => navigate(ctx, "listenStories"));
 
   bot.action("support", async (ctx) => {
     await ctx.answerCbQuery();
@@ -107,6 +101,7 @@ export function registerRouter(bot: Telegraf<MyContext>) {
 Как пользоваться:
 - Профиль — статус подписки, статистика.
 - Читать истории — список доступных историй.
+- Слушать истории — ГС истории.
 - Помощь — эти подсказки.
 - Техподдержка — связаться с автором.
 `;
@@ -130,13 +125,12 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   });
 
   bot.command("give_tokens", async (ctx) => {
-    if (!ctx.state.user || !isAdmin(ctx.state.user))
-      return ctx.reply("Недостаточно прав");
+    if (!ctx.state.user || !isAdmin(ctx.state.user)) return ctx.reply("Недостаточно прав");
     const parts = (ctx.message as any).text.trim().split(/\s+/);
     const amount = Math.max(1, Number(parts[1] ?? 1));
     const userId = (ctx.state.user as any)?._id as Types.ObjectId;
     await addTokens(userId, amount);
-    return ctx.reply(`Начислено ${amount} токен(ов).`);
+    return ctx.reply(`Начислено ${amount} ключ(ей).`);
   });
 
   registerReadHandlers(bot);
@@ -149,9 +143,13 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   registerAdminCoverHandlers(bot);
   registerBroadcastActions(bot);
   registerBroadcastSweeper(bot);
+
   registerSubscriptionAdminActions(bot);
   registerSubscriptionUserActions(bot);
-  registerBuyTokensActions(bot);  
-  registerBuyEndingActions(bot);
-}
 
+  registerBuyTokensActions(bot);
+  registerBuyEndingActions(bot);
+
+  registerAudioHandlers(bot);
+  registerAudioAdmin(bot);
+}

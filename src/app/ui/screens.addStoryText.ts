@@ -21,7 +21,7 @@ const cb = (text: string, data: string): InlineKeyboardButton => ({
 const priceLabel = (n?: number) => {
   const v = Number(n ?? 0);
   if (!v) return "🆓 бесплатно";
-  return `💰 ${v} токен(ов)`;
+  return `💰 ${v} ключ(ей)`;
 };
 
 export async function renderAddStoryTextScreen(ctx: MyContext) {
@@ -40,9 +40,9 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
       text: `Цена истории: сейчас *${priceLabel((d as any).entryTokens)}*\nВыберите цену:`,
       inline: Markup.inlineKeyboard([
         [cb("🆓 Бесплатно", "draft:price_story:0")],
-        [cb("💰 1 токен", "draft:price_story:1")],
-        [cb("💰 3 токена", "draft:price_story:3")],
-        [cb("💰 5 токенов", "draft:price_story:5")],
+        [cb("💰 1 ключ", "draft:price_story:1")],
+        [cb("💰 3 ключей", "draft:price_story:3")],
+        [cb("💰 5 ключей", "draft:price_story:5")],
         [cb("⬅️ Отмена", "draft:cancel_price")],
       ]),
     };
@@ -66,7 +66,7 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
     const cur = Math.max(0, Math.floor(Number((d as any).entryTokens ?? 0)));
 
     const label =
-      cur === 0 ? "бесплатно" : `${cur} токен(ов)`;
+      cur === 0 ? "бесплатно" : `${cur} ключ(ей)`;
 
     return {
       text:
@@ -74,9 +74,9 @@ export async function renderAddStoryTextScreen(ctx: MyContext) {
         `Выберите цену:`,
       inline: Markup.inlineKeyboard([
         [cb("🆓 Бесплатно", "draft:price_story:0")],
-        [cb("💠 1 токен", "draft:price_story:1")],
-        [cb("💠 3 токена", "draft:price_story:3")],
-        [cb("💠 5 токенов", "draft:price_story:5")],
+        [cb("💠 1 ключ", "draft:price_story:1")],
+        [cb("💠 3 ключей", "draft:price_story:3")],
+        [cb("💠 5 ключей", "draft:price_story:5")],
         [cb("⬅️ Отмена", "draft:cancel_price")],
       ]),
       parseMode: "HTML" as const,

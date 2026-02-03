@@ -244,9 +244,9 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     if (!res.ok && res.reason === "no_balance") {
       return editOrReplyText(
         ctx,
-        `😕 Недостаточно токенов.\n\nНужно: <b>${price}</b> токен(ов).`,
+        `😕 Недостаточно ключей.\n\nНужно: <b>${price}</b> ключ(ей).`,
         Markup.inlineKeyboard([
-          [Markup.button.callback("💰 Купить токены", "buy_tokens")],
+          [Markup.button.callback("💰 Купить ключи", "buy_tokens")],
           [Markup.button.callback("⬅️ Назад", "read_stories")],
           [Markup.button.callback("🏠 Главное меню", "main")],
         ])
