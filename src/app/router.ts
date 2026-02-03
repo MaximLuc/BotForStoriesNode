@@ -56,7 +56,7 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   );
 
   bot.action("admin:stories", async (ctx) => navigate(ctx, "storiesList"));
-  bot.action("admin:statistics", async (ctx) => navigate(ctx, "statistics"));
+  bot.action("admin:statistics_audio", async (ctx) => navigate(ctx, "statistics_audio"));
 
   bindDual(bot, { text: "Добавить историю (текстом)", action: "admin:add_story_text" }, async (ctx) =>
     navigate(ctx, "addStoryText")

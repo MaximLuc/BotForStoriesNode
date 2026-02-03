@@ -3,7 +3,7 @@ import { renderAddStoryTextScreen } from "./screens.addStoryText.js";
 import { renderReadStoriesScreen } from "./screens.readStories.js";
 import { renderListenStoriesScreen } from "./screens.listenStories.js"; // ✅ добавили
 import { renderProfileUserStatsScreen } from "./screens.profileStats.js";
-import { renderAdminStatsScreen } from "./screens.adminStats.js";
+import { renderAdminStatsAudioScreen } from "./screens.adminStats.js";
 import { isAdmin, isPremium } from "../../shared/utils.js";
 import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
@@ -27,7 +27,7 @@ export type ScreenId =
   | "profileUserStats"
   | "admin"
   | "storiesList"
-  | "statistics"
+  | "statistics_audio"
   | "addStoryText"
   | "readStories"
   | "buyTokens"
@@ -135,7 +135,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
   return {
     text: "Админ-панель",
     inline: Markup.inlineKeyboard([
-      [Markup.button.callback("🧑‍💻СТАТИСТИКА🧑‍💻", "admin:statistics")],
+      [Markup.button.callback("🧑‍💻СТАТИСТИКА ГС-историй🧑‍💻", "admin:statistics_audio")],
       [Markup.button.callback("Обложки", "admin:cover_list")],
       [
         Markup.button.callback("📜ДОБАВИТЬ ИСТОРИЮ📜", "admin:add_story_text"),
@@ -166,7 +166,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
 
   profileUserStats: (ctx) => renderProfileUserStatsScreen(ctx),
 
-  statistics: (ctx) => renderAdminStatsScreen(ctx),
+  statistics_audio: (ctx) => renderAdminStatsAudioScreen(ctx),
 };
 
 export function getScreen(ctx: MyContext, id: ScreenId): ScreenPayload {
