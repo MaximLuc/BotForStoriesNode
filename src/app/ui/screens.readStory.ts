@@ -25,16 +25,11 @@ type StoryLean = {
   isPublished: boolean;
   minRank?: number;
   coverUrl?: string;
+  entryTokens?: number;
 };
 
 const PAGE_LEN_TEXT = STORY_PAGE_LEN_TEXT;
 const FIRST_PAGE_CAPTION_LEN = STORY_FIRST_PAGE_CAPTION_LEN;
-
-export function userRank(ctx: MyContext): 0 | 1 {
-  const role = (ctx.state.user as any)?.role;
-  const privileged = ["premium", "admin", "premium_admin"];
-  return privileged.includes(role) ? 1 : 0;
-}
 
 function paginateSegment(text: string, limit: number): string[] {
   const t = (text ?? "").trim();
@@ -65,8 +60,7 @@ export function paginateStory(text: string, hasCover: boolean): string[] {
   let end = FIRST_PAGE_CAPTION_LEN;
   const head = t.slice(0, end);
   let cut = Math.max(head.lastIndexOf("\n\n"), head.lastIndexOf("\n"));
-  if (cut < Math.floor(FIRST_PAGE_CAPTION_LEN * 0.7))
-    cut = head.lastIndexOf(" ");
+  if (cut < Math.floor(FIRST_PAGE_CAPTION_LEN * 0.7)) cut = head.lastIndexOf(" ");
   const first = t.slice(0, cut > 0 ? cut : end).trim();
   const rest = t.slice(cut > 0 ? cut : end).trim();
 
@@ -74,46 +68,19 @@ export function paginateStory(text: string, hasCover: boolean): string[] {
   return [first, ...tailParts];
 }
 
-export function makePagerRow(
-  storyId: string,
-  page: number,
-  pages: number
-): InlineKeyboardButton[] {
+export function makePagerRow(storyId: string, page: number, pages: number): InlineKeyboardButton[] {
   const row: InlineKeyboardButton[] = [];
-  if (page > 0)
-    row.push(
-      Markup.button.callback("◀️ Назад", `read:story:${storyId}:p:${page - 1}`)
-    );
+  if (page > 0) row.push(Markup.button.callback("◀️ Назад", `read:story:${storyId}:p:${page - 1}`));
   row.push(Markup.button.callback(`Стр. ${page + 1} / ${pages}`, "noop"));
-  if (page < pages - 1)
-    row.push(
-      Markup.button.callback("Вперед ▶️", `read:story:${storyId}:p:${page + 1}`)
-    );
+  if (page < pages - 1) row.push(Markup.button.callback("Вперед ▶️", `read:story:${storyId}:p:${page + 1}`));
   return row;
 }
 
-export function makeEndingPagerRow(
-  storyId: string,
-  idx: number,
-  page: number,
-  pages: number
-): InlineKeyboardButton[] {
+export function makeEndingPagerRow(storyId: string, idx: number, page: number, pages: number): InlineKeyboardButton[] {
   const row: InlineKeyboardButton[] = [];
-  if (page > 0)
-    row.push(
-      Markup.button.callback(
-        "◀️ Назад",
-        `read:end:${storyId}:${idx}:p:${page - 1}`
-      )
-    );
+  if (page > 0) row.push(Markup.button.callback("◀️ Назад", `read:end:${storyId}:${idx}:p:${page - 1}`));
   row.push(Markup.button.callback(`Стр. ${page + 1} / ${pages}`, "noop"));
-  if (page < pages - 1)
-    row.push(
-      Markup.button.callback(
-        "Вперед ▶️",
-        `read:end:${storyId}:${idx}:p:${page + 1}`
-      )
-    );
+  if (page < pages - 1) row.push(Markup.button.callback("Вперед ▶️", `read:end:${storyId}:${idx}:p:${page + 1}`));
   return row;
 }
 
@@ -121,9 +88,7 @@ function star(minRank?: number) {
   return (minRank ?? 0) >= 1 ? STAR_BADGE : "";
 }
 
-export async function renderReadStoryScreen(
-  ctx: MyContext
-): Promise<ScreenPayload> {
+export async function renderReadStoryScreen(ctx: MyContext): Promise<ScreenPayload> {
   const raw =
     typeof ctx.callbackQuery === "object" && "data" in (ctx.callbackQuery ?? {})
       ? String((ctx.callbackQuery as any).data)
@@ -148,19 +113,7 @@ export async function renderReadStoryScreen(
   if (!s || !s.isPublished) {
     return {
       text: "История не найдена или недоступна.",
-      inline: Markup.inlineKeyboard([
-        [Markup.button.callback("↩︎ К списку", "read_stories")],
-      ]),
-    };
-  }
-
-  const ur = userRank(ctx);
-  if ((s.minRank ?? 0) > ur) {
-    return {
-      text: `⭐ Эта история доступна только подписчикам.\n\n*${s.title}*`,
-      inline: Markup.inlineKeyboard([
-        [Markup.button.callback("↩︎ К списку", "read_stories")],
-      ]),
+      inline: Markup.inlineKeyboard([[Markup.button.callback("↩︎ К списку", "read_stories")]]),
     };
   }
 
@@ -169,10 +122,13 @@ export async function renderReadStoryScreen(
   const pages = Math.max(1, parts.length);
   if (page > pages - 1) page = pages - 1;
 
-  const titleLine = `*${s.title}*${(s.minRank ?? 0) >= 1 ? "  ⭐" : ""}`;
-  const header = pages > 1 ? `_(страница ${page + 1}/${pages})_\n\n` : "";
+  const price = Math.max(0, Math.floor(Number((s as any).entryTokens ?? 0)));
+  const priceLine = price > 0 ? `\n💰 Цена: <b>${price}</b> ключ.` : `\n✅ Бесплатно`;
+
+  const titleLine = `<b>${s.title}</b>${(s.minRank ?? 0) >= 1 ? "  ⭐" : ""}`;
+  const header = pages > 1 ? `<i>(страница ${page + 1}/${pages})</i>\n\n` : "";
   const body = parts[page] || "";
-  const text = `${titleLine}\n\n${header}${body}`;
+  const text = `${titleLine}${priceLine}\n\n${header}${body}`;
 
   const rows: InlineKeyboardButton[][] = [];
   if (pages > 1) rows.push(makePagerRow(String(s._id), page, pages));
@@ -209,6 +165,7 @@ export async function renderReadStoryScreen(
   return {
     text,
     inline: Markup.inlineKeyboard(rows),
+    parseMode: "HTML",
   };
 }
 
@@ -246,17 +203,13 @@ export async function renderReadEndingScreen(
   if (!storyId || !Types.ObjectId.isValid(storyId)) {
     return {
       text: "История недоступна.",
-      inline: Markup.inlineKeyboard([
-        [Markup.button.callback("↩︎ К списку", "read_stories")],
-      ]),
+      inline: Markup.inlineKeyboard([[Markup.button.callback("↩︎ К списку", "read_stories")]]),
     };
   }
   if (typeof idx !== "number" || idx < 0) {
     return {
       text: "Окончание не найдено.",
-      inline: Markup.inlineKeyboard([
-        [Markup.button.callback("↩︎ К истории", `story:${storyId}`)],
-      ]),
+      inline: Markup.inlineKeyboard([[Markup.button.callback("↩︎ К истории", `story:${storyId}`)]]),
     };
   }
 
@@ -264,37 +217,15 @@ export async function renderReadEndingScreen(
   if (!s || !s.isPublished) {
     return {
       text: "История недоступна.",
-      inline: Markup.inlineKeyboard([
-        [Markup.button.callback("↩︎ К списку", "read_stories")],
-      ]),
+      inline: Markup.inlineKeyboard([[Markup.button.callback("↩︎ К списку", "read_stories")]]),
     };
   }
+
   const ending = (s.endings ?? [])[idx];
   if (!ending) {
     return {
       text: "Окончание не найдено.",
-      inline: Markup.inlineKeyboard([
-        [Markup.button.callback("↩︎ К истории", `story:${storyId}`)],
-      ]),
-    };
-  }
-
-  const ur = userRank(ctx);
-  if ((ending.minRank ?? 0) > ur) {
-    return {
-      text: `⭐ Это окончание доступно только подписчикам.\n\n*${s.title}* → _${ending.title ?? "Окончание"}_`,
-      inline: Markup.inlineKeyboard([
-        [Markup.button.callback("⭐ Оформить подписку", "subscribe")],
-        [
-          Markup.button.callback(
-            "↩︎ Назад к истории",
-            `read:story:${s._id}:p:${Math.max(
-              0,
-              paginateStory(s.text || "", !!s.coverUrl).length - 1
-            )}`
-          ),
-        ],
-      ]),
+      inline: Markup.inlineKeyboard([[Markup.button.callback("↩︎ К истории", `story:${storyId}`)]]),
     };
   }
 
@@ -302,35 +233,21 @@ export async function renderReadEndingScreen(
   const pages = Math.max(1, parts.length);
   if (page > pages - 1) page = pages - 1;
 
-  const titleLine = `*${s.title}*\n_${ending.title ?? "Окончание"}_`;
-  const header = pages > 1 ? `_(страница ${page + 1}/${pages})_\n\n` : "";
+  const titleLine = `<b>${s.title}</b>\n<i>${ending.title ?? "Окончание"}</i>`;
+  const header = pages > 1 ? `<i>(страница ${page + 1}/${pages})</i>\n\n` : "";
   const body = parts[page] || "";
   const text = `${titleLine}\n\n${header}${body}`;
 
   const rows: InlineKeyboardButton[][] = [];
   if (pages > 1) rows.push(makeEndingPagerRow(String(s._id), idx, page, pages));
 
-  const lastStoryPage = Math.max(
-    0,
-    paginateStory(s.text || "", !!s.coverUrl).length - 1
-  );
-  rows.push([
-    Markup.button.callback(
-      "↩︎ К истории",
-      `read:story:${s._id}:p:${lastStoryPage}`
-    ),
-  ]);
+  const lastStoryPage = Math.max(0, paginateStory(s.text || "", !!s.coverUrl).length - 1);
+  rows.push([Markup.button.callback("↩︎ К истории", `read:story:${s._id}:p:${lastStoryPage}`)]);
   rows.push([Markup.button.callback("📚 К списку", `read:list_from:${s._id}`)]);
 
   return {
     text,
     inline: Markup.inlineKeyboard(rows),
+    parseMode: "HTML",
   };
 }
-
-
-
-
-
-
-
