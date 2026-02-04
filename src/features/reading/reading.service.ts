@@ -35,10 +35,7 @@ async function getOrCreateUserStats(userId?: Types.ObjectId, tgId?: number) {
   return await UserStats.create({ userId, tgId });
 }
 
-async function findActiveSession(
-  userId: Types.ObjectId,
-  storyId: Types.ObjectId
-) {
+async function findActiveSession(userId: Types.ObjectId, storyId: Types.ObjectId) {
   return StoryReadSession.findOne({
     userId,
     storyId,
@@ -46,18 +43,11 @@ async function findActiveSession(
   }).sort({ startedAt: -1 });
 }
 
-async function lastCompletedCount(
-  userId: Types.ObjectId,
-  storyId: Types.ObjectId
-) {
+async function lastCompletedCount(userId: Types.ObjectId, storyId: Types.ObjectId) {
   return StoryReadSession.countDocuments({ userId, storyId, completed: true });
 }
 
-export async function openOrPage(
-  ctx: MyContext,
-  storyId: string,
-  page: number
-) {
+export async function openOrPage(ctx: MyContext, storyId: string, page: number) {
   const u = ctx.state.user;
   const mongoUserId = (u as any)?._id as Types.ObjectId | undefined;
   const tgId = u?.tgId;
@@ -66,6 +56,8 @@ export async function openOrPage(
 
   const story = await Story.findById(storyId);
   if (!story) return;
+
+  if (!(story as any).isPublished) return;
 
   const pages = paginate(story.text || "").length;
   const userId = mongoUserId;
@@ -102,10 +94,7 @@ export async function openOrPage(
       storyId: story._id,
     });
     if (!anySessionBefore) {
-      await Story.updateOne(
-        { _id: story._id },
-        { $inc: { "stats.uniqueReaders": 1 } }
-      );
+      await Story.updateOne({ _id: story._id }, { $inc: { "stats.uniqueReaders": 1 } });
     }
 
     const us = await getOrCreateUserStats(userId, tgId);
@@ -135,11 +124,7 @@ export async function openOrPage(
   }
 }
 
-export async function chooseEnding(
-  ctx: MyContext,
-  storyId: string,
-  endingIndex: number
-) {
+export async function chooseEnding(ctx: MyContext, storyId: string, endingIndex: number) {
   const u = ctx.state.user;
   const mongoUserId = (u as any)?._id as Types.ObjectId | undefined;
   const tgId = u?.tgId;
@@ -148,6 +133,8 @@ export async function chooseEnding(
 
   const story = await Story.findById(storyId);
   if (!story) return;
+
+  if (!(story as any).isPublished) return;
 
   const ending = story.endings?.[endingIndex];
   if (!ending) return;
@@ -163,14 +150,12 @@ export async function chooseEnding(
     session.lastEventAt = now;
     await session.save();
 
-    const durMs = session.startedAt
-      ? now.getTime() - session.startedAt.getTime()
-      : 0;
+    const durMs = session.startedAt ? now.getTime() - session.startedAt.getTime() : 0;
 
     const s = await Story.findById(story._id);
     if (s) {
-      const prevAvg = s.stats?.avgReadTimeMs ?? 0;
-      const prevN = s.stats?.conversions?.choseEnd ?? 0;
+      const prevAvg = (s as any).stats?.avgReadTimeMs ?? 0;
+      const prevN = (s as any).stats?.conversions?.choseEnd ?? 0;
       const newAvg = Math.round((prevAvg * prevN + durMs) / (prevN + 1));
       await Story.updateOne(
         { _id: story._id, "endings._id": ending._id },
@@ -189,13 +174,13 @@ export async function chooseEnding(
 
     const us = await getOrCreateUserStats(mongoUserId, tgId);
     if (us) {
-      const prevAvg = us.avgReadTimeMs ?? 0;
-      const prevN = us.storiesCompletedCount ?? 0;
+      const prevAvg = (us as any).avgReadTimeMs ?? 0;
+      const prevN = (us as any).storiesCompletedCount ?? 0;
       const newAvg = Math.round((prevAvg * prevN + durMs) / (prevN + 1));
 
-      us.storiesCompletedCount = (us.storiesCompletedCount ?? 0) + 1;
-      us.endingsChosenCount = (us.endingsChosenCount ?? 0) + 1;
-      us.avgReadTimeMs = newAvg;
+      (us as any).storiesCompletedCount = ((us as any).storiesCompletedCount ?? 0) + 1;
+      (us as any).endingsChosenCount = ((us as any).endingsChosenCount ?? 0) + 1;
+      (us as any).avgReadTimeMs = newAvg;
 
       const eId = String(ending._id);
       const map = (us as any).endingChoices ?? {};
@@ -203,12 +188,12 @@ export async function chooseEnding(
       (us as any).endingChoices = map;
 
       const storyLen = (story.text ?? "").length;
-      if ((us.longestStoryChars ?? 0) < storyLen) {
-        us.longestStoryChars = storyLen;
-        us.longestStoryId = story._id;
+      if (((us as any).longestStoryChars ?? 0) < storyLen) {
+        (us as any).longestStoryChars = storyLen;
+        (us as any).longestStoryId = story._id;
       }
 
-      if ((session?.rereadIndex ?? 0) > 0) {
+      if (((session as any)?.rereadIndex ?? 0) > 0) {
         const rmap = (us as any).rereads ?? {};
         const sid = String(story._id);
         rmap[sid] = (rmap[sid] ?? 0) + 1;
@@ -224,23 +209,20 @@ export async function dropActiveSession(ctx: MyContext, storyId: string) {
   const u = ctx.state.user;
   const mongoUserId = (u as any)?._id as Types.ObjectId | undefined;
   if (!mongoUserId) return;
-  const session = await findActiveSession(
-    mongoUserId,
-    new Types.ObjectId(storyId)
-  );
+  const session = await findActiveSession(mongoUserId, new Types.ObjectId(storyId));
   if (!session) return;
 
   const now = new Date();
   session.finishedAt = now;
-  session.completed = !!session.completed;
+  session.completed = !!(session as any).completed;
   session.lastEventAt = now;
   await session.save();
 
-  if (!session.completed) {
+  if (!(session as any).completed) {
     await Story.updateOne({ _id: storyId }, { $inc: { "stats.dropCount": 1 } });
     const us = await getOrCreateUserStats(mongoUserId, u?.tgId);
     if (us) {
-      us.dropsCount = (us.dropsCount ?? 0) + 1;
+      (us as any).dropsCount = ((us as any).dropsCount ?? 0) + 1;
       await us.save();
     }
   }

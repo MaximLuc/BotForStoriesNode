@@ -9,6 +9,7 @@ import { longTextMerge } from "./middlewares/longTextMerge.js";
 import { checkSubscription } from "./middlewares/checkSubscription.js";
 import { staleGuard } from "./middlewares/staleGuard.js";
 import { dailyButtonsMiddleware } from "../shared/dailyButtons.middleware.js";
+import { startStoryPublisherJob } from "../features/stories/publish.job.js";
 
 export function initBot(token: string) {
   const bot = new Telegraf(token);
@@ -19,9 +20,11 @@ export function initBot(token: string) {
   bot.use(singleMessage);
   bot.use(coverPendingGuard);
   bot.use(longTextMerge);
-  bot.use(checkSubscription)
+  bot.use(checkSubscription);
   bot.use(dailyButtonsMiddleware);
   registerRouter(bot);
+
+  startStoryPublisherJob();
 
   return { bot };
 }
