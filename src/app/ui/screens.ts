@@ -1,5 +1,4 @@
-import { buildInlineMain } from "./menus.js";
-import { renderAddStoryTextScreen } from "./screens.addStoryText.js";
+import { buildInlineMain } from "./menus.js";import { renderAddStoryTextScreen } from "./screens.addStoryText.js";
 import { renderReadStoriesScreen } from "./screens.readStories.js";
 import { renderProfileUserStatsScreen } from "./screens.profileStats.js";
 import { renderListenStoriesScreen } from "./screens.listenStories.js";
@@ -9,6 +8,11 @@ import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
 import { getBalance } from "../../features/tokens/wallet.service.js";
 import { Types } from "mongoose";
+import {
+  MAIN_TEXT_DEFAULT,
+  MAIN_TEXT_NEW_USER,
+  NEW_USER_WELCOME_WINDOW_MS,
+} from "./texts.main.js";
 
 const TOKEN_PACKS = [
   { id: "p6", tokens: 6, priceRub: 100 },
@@ -40,18 +44,34 @@ export type ScreenPayload = {
   parseMode?: "Markdown" | "HTML";
 };
 
-type ScreenRenderer = (ctx: MyContext) => Promise<ScreenPayload> | ScreenPayload;
+type ScreenRenderer = (
+  ctx: MyContext,
+) => Promise<ScreenPayload> | ScreenPayload;
+
+function isNewUser(createdAt?: any) {
+  if (!createdAt) return false;
+  const ts = new Date(createdAt).getTime();
+  if (!Number.isFinite(ts)) return false;
+  return Date.now() - ts <= NEW_USER_WELCOME_WINDOW_MS;
+}
 
 const screens: Record<ScreenId, ScreenRenderer> = {
-  main: (ctx) => ({
-    text: `Добро пожаловать в *Юля С "Bot"*, ${
-      ctx.from?.first_name || "друг!"
-    }!\n\nЗдесь ты можешь читать истории и слушать ГС-истории. Приятного пользования 🌸`,
-    inline: buildInlineMain(ctx.state.user),
-    setReplyKeyboard: true,
-    replyNoticeText: "",
-  }),
+  main: (ctx) => {
+    const name = ctx.from?.first_name || "друг!";
+    const userCreatedAt = (ctx.state.user as any)?.createdAt;
 
+    const text = isNewUser(userCreatedAt)
+      ? MAIN_TEXT_NEW_USER(name)
+      : MAIN_TEXT_DEFAULT(name);
+
+    return {
+      text,
+      inline: buildInlineMain(ctx.state.user),
+      setReplyKeyboard: true,
+      replyNoticeText: "",
+      parseMode: "Markdown" as const,
+    };
+  },
   profile: async (ctx) => {
     const u = ctx.state.user;
     const userId = (u as any)?._id as Types.ObjectId | undefined;
@@ -97,7 +117,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     const rows = TOKEN_PACKS.map((p) => [
       Markup.button.callback(
         `${p.tokens} ключ(ей) — ${p.priceRub}₽`,
-        `buy_tokens:confirm:${p.id}`
+        `buy_tokens:confirm:${p.id}`,
       ),
     ]);
 
@@ -120,7 +140,12 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     return {
       text: "Админ-панель",
       inline: Markup.inlineKeyboard([
-        [Markup.button.callback("🧑‍💻 Статистика ГС-историй", "admin:statistics_audio")],
+        [
+          Markup.button.callback(
+            "🧑‍💻 Статистика ГС-историй",
+            "admin:statistics_audio",
+          ),
+        ],
         [Markup.button.callback("Обложки", "admin:cover_list")],
         [Markup.button.callback("📜 Добавить историю", "admin:add_story_text")],
         [Markup.button.callback("🎧 Добавить ГС-историю", "admin:add_audio")],
@@ -149,6 +174,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
 
 export function getScreen(ctx: MyContext, id: ScreenId): ScreenPayload {
   const r = screens[id];
-  if (!r) return { text: "Экран не найден", inline: buildInlineMain(undefined) };
+  if (!r)
+    return { text: "Экран не найден", inline: buildInlineMain(undefined) };
   return r(ctx) as ScreenPayload;
 }

@@ -25,6 +25,7 @@ import { registerBuyTokensActions } from "../features/tokens/buyTokens.actions.j
 
 import { registerAudioHandlers } from "../features/audio/audio.handlers.js";
 import { registerAudioAdmin } from "../features/audio/audio.admin.js";
+import { HELP_TEXT } from "./ui/texts.main.js";
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -92,18 +93,7 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   bot.action("help", async (ctx) => {
     await ctx.answerCbQuery();
 
-    const text = `
-ℹ️ Помощь и навигация
-
-Здесь собраны основные разделы бота и подсказки по навигации.
-
-Как пользоваться:
-- Профиль — статус подписки, статистика.
-- Читать истории — список доступных историй.
-- Слушать истории — ГС истории.
-- Помощь — эти подсказки.
-- Техподдержка — связаться с автором.
-`;
+    const text = HELP_TEXT;
 
     await respond(ctx, text.trim(), {
       parseMode: "Markdown",
