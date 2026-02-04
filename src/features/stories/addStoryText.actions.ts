@@ -50,35 +50,41 @@ function inputWaitKb(backCb = "admin:add_story_text") {
   ]);
 }
 
+
+const MSK_OFFSET_MIN = 180; 
+
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-function formatDtLocal(dt: Date) {
-  return `${pad(dt.getDate())}.${pad(dt.getMonth() + 1)} ${pad(dt.getHours())}:${pad(
-    dt.getMinutes()
+function formatDtMsk(utcDate: Date) {
+  const ms = utcDate.getTime() + MSK_OFFSET_MIN * 60_000;
+  const d = new Date(ms);
+  return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)} ${pad(d.getUTCHours())}:${pad(
+    d.getUTCMinutes()
   )}`;
 }
 
 function storyStatusLine(s: any | null | undefined) {
   if (!s) return "Статус: —";
   if (s.isPublished) {
-    const dt = s.publishedAt ? formatDtLocal(new Date(s.publishedAt)) : "—";
+    const dt = s.publishedAt ? formatDtMsk(new Date(s.publishedAt)) : "—";
     return `Статус: <b>опубликована</b> ✅\nОпубликовано: <b>${dt}</b>`;
   }
   if (s.publishAt) {
-    return `Статус: <b>запланирована</b> ⏱\nПубликация: <b>${formatDtLocal(
+    return `Статус: <b>запланирована</b> ⏱\nПубликация (МСК): <b>${formatDtMsk(
       new Date(s.publishAt)
     )}</b>`;
   }
   return "Статус: <b>черновик</b> 📝";
 }
 
-async function renderPublishChoice(ctx: MyContext, storyId: string) {
+async function renderPublishChoice(ctx: MyContext, storyId: string, hint?: string) {
   const s = (await Story.findById(storyId).lean()) as any | null;
   const title = s?.title ? html(String(s.title)) : "история";
 
   const text =
+    (hint ? `${hint}\n\n` : "") +
     `История: <b>${title}</b>\n` +
     `${storyStatusLine(s)}\n\n` +
     `Выберите способ публикации:`;
@@ -88,7 +94,7 @@ async function renderPublishChoice(ctx: MyContext, storyId: string) {
     [Markup.button.callback("⏱ Запланировать", `story:schedule_menu:${storyId}`)],
     [Markup.button.callback("🕐 Авто: через 1 минуту", `story:schedule_quick:${storyId}:m1`)],
     [Markup.button.callback("➕ Добавить обложку", `cover:add:${storyId}`)],
-    [Markup.button.callback("↩︎ Сохранить и выйти", "admin")],
+    [Markup.button.callback("↩︎ В админку", "admin")],
   ]);
 
   await updateMenu(ctx, text, inline);
@@ -144,7 +150,7 @@ async function renderScheduleMenu(ctx: MyContext, storyId: string) {
     await updateMenu(
       ctx,
       "История не найдена.",
-      Markup.inlineKeyboard([[Markup.button.callback("↩︎ Сохранить и выйти", "admin")]])
+      Markup.inlineKeyboard([[Markup.button.callback("↩︎ В админку", "admin")]])
     );
     return;
   }
@@ -162,12 +168,12 @@ async function renderScheduleMenu(ctx: MyContext, storyId: string) {
   }
 
   const title = s?.title ? html(String(s.title)) : "история";
-  const when = s.publishAt ? formatDtLocal(new Date(s.publishAt)) : "не задано";
+  const when = s.publishAt ? formatDtMsk(new Date(s.publishAt)) : "не задано";
 
   const text =
     `⏱ <b>Планирование публикации</b>\n\n` +
     `История: <b>${title}</b>\n` +
-    `Текущее время публикации: <b>${when}</b>\n\n` +
+    `Текущее время публикации (МСК): <b>${when}</b>\n\n` +
     `Нажимайте кнопки несколько раз — время будет <b>прибавляться</b>.\n` +
     `Пример: 45 мин = 3× “+15 мин”.\n` +
     `Пример: завтра в это же время +30 мин = “+1 день” → “+30 мин”.`;
@@ -322,7 +328,7 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
       { $set: { isPublished: true, publishedAt: now }, $unset: { publishAt: "" } }
     );
 
-    await renderPublishChoice(ctx, storyId);
+    await renderPublishChoice(ctx, storyId, `✅ Опубликовано (МСК): <b>${formatDtMsk(now)}</b>`);
   });
 
   bot.action(/^story:schedule_menu:(.+)$/, async (ctx) => {
@@ -368,6 +374,7 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
       { $set: { publishAt: next }, $unset: { publishedAt: "" } }
     );
 
+    // показываем в меню именно время МСК
     await renderScheduleMenu(ctx, storyId);
   });
 
@@ -375,12 +382,13 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
     const storyId = String(ctx.match[1]);
     const tgId = ctx.state.user!.tgId;
 
+    // pendingInput ловим в collector.ts
     await setPending(tgId, { kind: "publishAtDirect", storyId });
 
     await ctx.answerCbQuery();
     await updateMenu(
       ctx,
-      "✍️ <b>Введите время публикации одним сообщением</b>.\n\n" +
+      "✍️ <b>Введите время публикации одним сообщением (МСК)</b>.\n\n" +
         "Форматы:\n" +
         "• <b>HH:MM</b> (сегодня/если уже прошло — поставим на завтра)\n" +
         "• <b>DD.MM HH:MM</b>\n" +

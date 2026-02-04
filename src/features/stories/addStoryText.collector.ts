@@ -8,38 +8,60 @@ import { Markup } from "telegraf";
 import { safeEdit } from "../../app/ui/respond.js";
 import { tryDeleteUserMessagesHard } from "./tryDelete.js";
 
+/** =========================
+ *  TZ helpers (MSK fixed)
+ *  ========================= */
+const MSK_OFFSET_MIN = 180; // UTC+3
+
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-function formatDtLocal(dt: Date) {
-  return `${pad(dt.getDate())}.${pad(dt.getMonth() + 1)} ${pad(dt.getHours())}:${pad(
-    dt.getMinutes()
+// Форматируем дату "как МСК" независимо от TZ сервера
+function formatDtMsk(utcDate: Date) {
+  const ms = utcDate.getTime() + MSK_OFFSET_MIN * 60_000;
+  const d = new Date(ms);
+  return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)} ${pad(d.getUTCHours())}:${pad(
+    d.getUTCMinutes()
   )}`;
 }
 
-function html(s = "") {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// Создаём UTC Date из "компонентов МСК"
+function mskPartsToUtc(yyyy: number, mon0: number, dd: number, hh: number, mm: number) {
+  const msUtc = Date.UTC(yyyy, mon0, dd, hh, mm, 0, 0) - MSK_OFFSET_MIN * 60_000;
+  return new Date(msUtc);
 }
 
-
-function parsePublishAt(input: string, now = new Date()): Date | null {
+// Парсим ввод админа как МСК → возвращаем UTC Date
+function parsePublishAtMsk(input: string, nowUtc = new Date()): Date | null {
   const s = (input ?? "").trim();
 
+  // текущее время в МСК (через сдвиг), но читаем через UTC-геттеры
+  const nowMskMs = nowUtc.getTime() + MSK_OFFSET_MIN * 60_000;
+  const nowMsk = new Date(nowMskMs);
 
+  const curY = nowMsk.getUTCFullYear();
+  const curM = nowMsk.getUTCMonth();
+  const curD = nowMsk.getUTCDate();
+
+  // HH:MM
   let m = s.match(/^(\d{1,2}):(\d{2})$/);
   if (m) {
     const hh = Number(m[1]);
     const mm = Number(m[2]);
     if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
 
-    const dt = new Date(now);
-    dt.setHours(hh, mm, 0, 0);
+    let dtUtc = mskPartsToUtc(curY, curM, curD, hh, mm);
 
-    if (dt.getTime() <= now.getTime()) dt.setDate(dt.getDate() + 1);
-    return dt;
+    // если уже прошло в МСК — на завтра
+    const candMskMs = dtUtc.getTime() + MSK_OFFSET_MIN * 60_000;
+    if (candMskMs <= nowMskMs) {
+      dtUtc = mskPartsToUtc(curY, curM, curD + 1, hh, mm);
+    }
+    return dtUtc;
   }
 
+  // DD.MM HH:MM
   m = s.match(/^(\d{1,2})\.(\d{1,2})\s+(\d{1,2}):(\d{2})$/);
   if (m) {
     const dd = Number(m[1]);
@@ -49,12 +71,10 @@ function parsePublishAt(input: string, now = new Date()): Date | null {
     if (mon < 1 || mon > 12 || dd < 1 || dd > 31) return null;
     if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
 
-    const year = now.getFullYear();
-    const dt = new Date(year, mon - 1, dd, hh, mm, 0, 0);
-    return Number.isFinite(dt.getTime()) ? dt : null;
+    return mskPartsToUtc(curY, mon - 1, dd, hh, mm);
   }
 
-
+  // DD.MM.YYYY HH:MM
   m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})$/);
   if (m) {
     const dd = Number(m[1]);
@@ -66,21 +86,24 @@ function parsePublishAt(input: string, now = new Date()): Date | null {
     if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
     if (yyyy < 2000 || yyyy > 2100) return null;
 
-    const dt = new Date(yyyy, mon - 1, dd, hh, mm, 0, 0);
-    return Number.isFinite(dt.getTime()) ? dt : null;
+    return mskPartsToUtc(yyyy, mon - 1, dd, hh, mm);
   }
 
   return null;
 }
 
+function html(s = "") {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function storyStatusLine(s: any | null | undefined) {
   if (!s) return "Статус: —";
   if (s.isPublished) {
-    const dt = s.publishedAt ? formatDtLocal(new Date(s.publishedAt)) : "—";
-    return `Статус: <b>опубликована</b> ✅\nОпубликовано: <b>${dt}</b>`;
+    const dt = s.publishedAt ? formatDtMsk(new Date(s.publishedAt)) : "—";
+    return `Статус: <b>опубликована</b> ✅\nОпубликовано (МСК): <b>${dt}</b>`;
   }
   if (s.publishAt) {
-    return `Статус: <b>запланирована</b> ⏱\nПубликация: <b>${formatDtLocal(
+    return `Статус: <b>запланирована</b> ⏱\nПубликация (МСК): <b>${formatDtMsk(
       new Date(s.publishAt)
     )}</b>`;
   }
@@ -128,7 +151,6 @@ export function registerDraftInputCollector(bot: Telegraf<MyContext>) {
 
     const p = d.pendingInput as any;
 
-
     if (p.kind === "publishAtDirect") {
       const storyId = String(p.storyId ?? "");
       if (!storyId) {
@@ -141,11 +163,10 @@ export function registerDraftInputCollector(bot: Telegraf<MyContext>) {
         );
       }
 
-      const now = new Date();
-      const dt = parsePublishAt(chunk, now);
+      const nowUtc = new Date();
+      const dtUtc = parsePublishAtMsk(chunk, nowUtc);
 
-      if (!dt) {
-      
+      if (!dtUtc) {
         try {
           await tryDeleteUserMessagesHard(ctx, ctx.chat!.id, [msg.message_id]);
         } catch {}
@@ -157,39 +178,31 @@ export function registerDraftInputCollector(bot: Telegraf<MyContext>) {
         );
       }
 
-
-      if (dt.getTime() < now.getTime() + 30_000) {
+      if (dtUtc.getTime() < nowUtc.getTime() + 60_000) {
         try {
           await tryDeleteUserMessagesHard(ctx, ctx.chat!.id, [msg.message_id]);
         } catch {}
 
-        return renderPublishChoice(
-          ctx,
-          storyId,
-          `❌ Время должно быть в будущем (хотя бы через 1 минуту).`
-        );
+        return renderPublishChoice(ctx, storyId, `❌ Время должно быть в будущем (минимум +1 мин).`);
       }
 
       await Story.updateOne(
         { _id: storyId, isPublished: false },
-        { $set: { publishAt: dt }, $unset: { publishedAt: "" } }
+        { $set: { publishAt: dtUtc }, $unset: { publishedAt: "" } }
       );
 
       await resetPending(u.tgId);
-
 
       try {
         await tryDeleteUserMessagesHard(ctx, ctx.chat!.id, [msg.message_id]);
       } catch {}
 
-     
       return renderPublishChoice(
         ctx,
         storyId,
-        `✅ Время сохранено: <b>${formatDtLocal(dt)}</b>`
+        `✅ Время сохранено (МСК): <b>${formatDtMsk(dtUtc)}</b>`
       );
     }
-
 
     aggPush(ctx, chunk);
   });
