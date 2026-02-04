@@ -17,7 +17,7 @@ import {
 } from "../../shared/constants.js";
 
 const PAGE_SIZE = STORIES_PAGE_SIZE;
-const NEW_MS = 24 * 60 * 60 * 1000; // 24 часа
+const NEW_MS = 24 * 60 * 60 * 1000;
 
 function truncate(text: string, max = TITLE_TRUNCATE_LIST) {
   const t = (text ?? "").trim();
@@ -148,7 +148,6 @@ export async function renderReadStoriesScreen(ctx: MyContext): Promise<ScreenPay
     };
   }
 
-  // 🔥 топ среди историй, вышедших за последние 7 дней (по stats.views)
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const top7d = await Story.find(
     { isPublished: true, createdAt: { $gte: since7d } },
@@ -160,7 +159,6 @@ export async function renderReadStoriesScreen(ctx: MyContext): Promise<ScreenPay
 
   const topId7d = top7d.length ? String((top7d[0] as any)._id) : null;
 
-  // статусы: куплено / прочитано
   const userId = (ctx.state.user as any)?._id as Types.ObjectId | undefined;
   const storyIds = docs.map((d: any) => new Types.ObjectId(String(d._id)));
 
@@ -168,7 +166,6 @@ export async function renderReadStoriesScreen(ctx: MyContext): Promise<ScreenPay
   let readSet = new Set<string>();
 
   if (userId) {
-    // ✅ куплено = есть запись в UserStoryAccess
     const bought = await UserStoryAccess.find(
       { userId, storyId: { $in: storyIds } },
       { storyId: 1 }
@@ -176,7 +173,6 @@ export async function renderReadStoriesScreen(ctx: MyContext): Promise<ScreenPay
 
     boughtSet = new Set(bought.map((x: any) => String(x.storyId)));
 
-    // ✅ прочитано = есть завершённая сессия
     const read = await StoryReadSession.find(
       { userId, storyId: { $in: storyIds }, completed: true },
       { storyId: 1 }
@@ -193,7 +189,6 @@ export async function renderReadStoriesScreen(ctx: MyContext): Promise<ScreenPay
     const isBought = price <= 0 ? true : boughtSet.has(id);
     const isRead = readSet.has(id);
 
-    // 📗 прочитано, 📖 доступно, 💠 платное
     const statusIcon = isRead ? "📗 " : isBought ? "📖 " : "💠 ";
 
     return {

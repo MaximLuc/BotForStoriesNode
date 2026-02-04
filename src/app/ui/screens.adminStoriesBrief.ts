@@ -45,12 +45,10 @@ type LeanStory = {
 
 function statusLine(s: LeanStory) {
   if (s.isPublished) return `✅ опубликована: <b>${fmtDt(s.publishedAt ?? s.createdAt)}</b>`;
-  // сюда попадут только запланированные (publishAt != null)
   return `⏱ будет опубликована: <b>${fmtDt(s.publishAt)}</b>`;
 }
 
 export async function renderAdminStoriesBriefScreen(ctx: MyContext) {
-  // 1) запланированные (без черновиков!)
   const scheduled = await Story.find(
     { isPublished: false, publishAt: { $ne: null } },
     { _id: 1, title: 1, isPublished: 1, publishAt: 1, publishedAt: 1, createdAt: 1, stats: 1 }
@@ -59,7 +57,6 @@ export async function renderAdminStoriesBriefScreen(ctx: MyContext) {
     .limit(7)
     .lean<LeanStory[]>();
 
-  // 2) последние опубликованные
   const published = await Story.find(
     { isPublished: true },
     { _id: 1, title: 1, isPublished: 1, publishAt: 1, publishedAt: 1, createdAt: 1, stats: 1 }
@@ -68,7 +65,6 @@ export async function renderAdminStoriesBriefScreen(ctx: MyContext) {
     .limit(7)
     .lean<LeanStory[]>();
 
-  // 3) объединяем и режем до 7
   const merged = [...scheduled, ...published].slice(0, 7);
 
   if (!merged.length) {
@@ -84,7 +80,6 @@ export async function renderAdminStoriesBriefScreen(ctx: MyContext) {
 
   const ids = merged.map((s) => new Types.ObjectId(String(s._id)));
 
-  // 🔑 потрачено на истории (сумма paidTokens)
   const storySpentAgg = await UserStoryAccess.aggregate([
     { $match: { storyId: { $in: ids } } },
     { $group: { _id: "$storyId", tokens: { $sum: "$paidTokens" } } },

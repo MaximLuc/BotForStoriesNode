@@ -1,5 +1,5 @@
 export const NEW_USER_WELCOME_WINDOW_MS = 26 * 60 * 60 * 1000;
-
+//
 export const MAIN_TEXT_NEW_USER = (name: string) => `
 Здравствуйте, мои дорогие читатели, и лично вы, ${name}! 🌸
 

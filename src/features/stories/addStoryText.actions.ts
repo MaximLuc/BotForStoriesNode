@@ -202,7 +202,7 @@ export function registerAddStoryTextActions(bot: Telegraf<MyContext>) {
     await setStoryPrice(ctx.state.user!.tgId, v as 0 | 1 | 3 | 5);
     await resetPending(ctx.state.user!.tgId);
     await ctx.answerCbQuery("Цена сохранена");
-    await renderForm(ctx, `✅ Цена истории: ${v ? `${v} токен(ов)` : "бесплатно"}`);
+    await renderForm(ctx, `✅ Цена истории: ${v ? `${v} ключ(ей)` : "бесплатно"}`);
   });
 
   bot.action("draft:cancel_price", async (ctx) => {

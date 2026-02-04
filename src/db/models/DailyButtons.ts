@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 
 const DailyButtonsSchema = new mongoose.Schema(
   {
-    date: { type: String, unique: true, index: true }, // YYYY-MM-DD
-    buttons: { type: Object, default: {} },            // { "read_stories": 12, "audio:open:...": 5, ... }
-    updates: { type: Object, default: {} },            // optional: { "callback_query": 100, "message": 20 }
+    date: { type: String, unique: true, index: true },
+    buttons: { type: Object, default: {} },           
+    updates: { type: Object, default: {} },           
   },
   { timestamps: true }
 );

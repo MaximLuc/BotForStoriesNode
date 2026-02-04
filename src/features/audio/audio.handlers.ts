@@ -34,7 +34,6 @@ export function registerAudioHandlers(bot: Telegraf<MyContext>) {
       await AudioStory.updateOne({ _id: id }, { $inc: { closesCount: 1 } });
     }
 
-    // ✅ сразу возвращаем список, без промежуточных сообщений
     const payload = await renderListenStoriesScreen(ctx);
     await respond(ctx, payload.text, { inline: payload.inline });
   });
@@ -63,11 +62,11 @@ export function registerAudioHandlers(bot: Telegraf<MyContext>) {
 
     if (!ok) {
       const balance = await getBalance(userId);
-      const text = `Недостаточно токенов.\nЦена: ${price}\nБаланс: ${balance}`;
+      const text = `Недостаточно ключей.\nЦена: ${price}\nБаланс: ${balance}`;
       return respond(ctx, text, {
         inline: {
           inline_keyboard: [
-            [{ text: "Купить токены", callback_data: "buy_tokens" }],
+            [{ text: "Купить ключи", callback_data: "buy_tokens" }],
             [{ text: "⬅️ Назад", callback_data: `audio:open:${id}` }],
           ],
         },
@@ -85,7 +84,6 @@ export function registerAudioHandlers(bot: Telegraf<MyContext>) {
 
       await AudioStory.updateOne({ _id: id }, { $inc: { tokensSpent: price } });
     } catch {
-      // если гонка и запись уже есть — игнор
     }
 
     const payload = await renderAudioStoryScreen(ctx, id);
@@ -109,14 +107,13 @@ export function registerAudioHandlers(bot: Telegraf<MyContext>) {
       return respond(ctx, payload.text, { inline: payload.inline });
     }
 
-    // ✅ удаляем "экран" с кнопкой "Слушать", чтобы не было мусора
     try {
       await ctx.deleteMessage();
     } catch {}
 
     const caption =
       `🎧 <b>${String((story as any).title)}</b>\n` +
-      `Цена: ${Number((story as any).priceTokens ?? 0)} ток.\n` +
+      `Цена: ${Number((story as any).priceTokens ?? 0)} ключей\n` +
       `Длина: ${minutesText((story as any).durationSec)}\n\n` +
       `⬅️ Вернуться — кнопкой ниже`;
 
@@ -128,7 +125,6 @@ export function registerAudioHandlers(bot: Telegraf<MyContext>) {
       },
     });
 
-    // ✅ закон одного окна: считаем voice текущим "главным"
     ctx.state?.rememberMessageId?.(sent.message_id);
   });
 }

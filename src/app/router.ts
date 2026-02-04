@@ -57,7 +57,6 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   bot.action("admin:stories", async (ctx) => navigate(ctx, "storiesList"));
   bot.action("admin:statistics_audio", async (ctx) => navigate(ctx, "statistics_audio"));
 
-  // ✅ новый экран
   bot.action("admin:stories_brief", async (ctx) => navigate(ctx, "adminStoriesBrief"));
 
   bindDual(

@@ -7,7 +7,7 @@ import type { InlineKeyboardButton } from "telegraf/types";
 import { Types } from "mongoose";
 
 const PAGE_SIZE = 10;
-const NEW_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 часа
+const NEW_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function truncate(text: string, max = 26) {
   const t = (text ?? "").trim();

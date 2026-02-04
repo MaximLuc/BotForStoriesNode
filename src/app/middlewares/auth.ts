@@ -34,25 +34,15 @@ export function clearUserCache() {
   cache.clear();
 }
 
-export const auth: MiddlewareFn<MyContext> = async (ctx, next) => {
-  if (!ctx.from) return next();
-  sweep();
+
+export async function ensureUserForCtx(ctx: MyContext): Promise<UserDoc | null> {
+  if (!ctx.from) return null;
 
   const tgId = ctx.from.id;
-
-  const cached = cache.get(tgId);
-  if (cached && cached.expiresAt > Date.now() && !isAdminRole(cached.user.role)) {
-    ctx.state.user = cached.user;
-    return next();
-  }
-
   const shouldBeAdmin = cfg.adminIds.includes(tgId);
 
   const upsertUpdate: any = {
-    $setOnInsert: {
-      tgId,
-      starterTokensGranted: false,
-    },
+    $setOnInsert: defaultOnInsert(tgId),
     $set: {
       firstName: ctx.from.first_name ?? "",
       username: ctx.from.username ?? null,
@@ -60,20 +50,17 @@ export const auth: MiddlewareFn<MyContext> = async (ctx, next) => {
     },
   };
 
-  const userDoc = await User.findOneAndUpdate(
-    { tgId },
-    upsertUpdate,
-    { upsert: true, new: true } 
-  ).catch(async (e: any) => {
-    if (e?.code === 11000) {
-      return await User.findOne({ tgId });
-    }
+  const userDoc = await User.findOneAndUpdate({ tgId }, upsertUpdate, {
+    upsert: true,
+    new: true,
+  }).catch(async (e: any) => {
+    if (e?.code === 11000) return await User.findOne({ tgId });
     throw e;
   });
 
   let user = userDoc as UserDoc | null;
   if (!user) user = (await User.findOne({ tgId })) as UserDoc | null;
-  if (!user) return next();
+  if (!user) return null;
 
   if (!user.starterTokensGranted) {
     const updated = await User.findOneAndUpdate(
@@ -95,6 +82,60 @@ export const auth: MiddlewareFn<MyContext> = async (ctx, next) => {
     cache.delete(tgId);
   }
 
-  ctx.state.user = user;
+  return user;
+}
+
+function defaultOnInsert(tgId: number) {
+  return {
+    tgId,
+    starterTokensGranted: false,
+  };
+}
+
+export const auth: MiddlewareFn<MyContext> = async (ctx, next) => {
+  if (!ctx.from) return next();
+  sweep();
+
+  const tgId = ctx.from.id;
+
+  const cached = cache.get(tgId);
+  if (cached && cached.expiresAt > Date.now() && !isAdminRole(cached.user.role)) {
+    ctx.state.user = cached.user;
+    return next();
+  }
+
+  const shouldBeAdmin = cfg.adminIds.includes(tgId);
+
+  if (shouldBeAdmin) {
+    const u = await ensureUserForCtx(ctx);
+    if (u) ctx.state.user = u;
+    return next();
+  }
+
+
+  const existing = (await User.findOne({ tgId })) as UserDoc | null;
+
+  if (existing) {
+
+    await User.updateOne(
+      { tgId },
+      {
+        $set: {
+          firstName: ctx.from.first_name ?? "",
+          username: ctx.from.username ?? null,
+          updatedAt: new Date(),
+        },
+      }
+    ).catch(() => {});
+
+    const fresh = (await User.findOne({ tgId })) as UserDoc | null;
+    const user = (fresh ?? existing) as UserDoc;
+
+    if (!isAdminRole(user.role)) {
+      cache.set(tgId, { user, expiresAt: Date.now() + USER_TTL_MS });
+    }
+    ctx.state.user = user;
+  }
+
   return next();
 };
