@@ -23,6 +23,7 @@ export function registerDraftFinishHandlers(bot: Telegraf<MyContext>) {
     await ctx.answerCbQuery();
     aggReset(ctx.state.user!.tgId);
     await resetPending(ctx.state.user!.tgId);
+
     const payload = await renderAddStoryTextScreen(ctx);
     await safeEdit(ctx, payload.text, payload.inline as any, "HTML");
   });
@@ -32,6 +33,7 @@ export function registerDraftFinishHandlers(bot: Telegraf<MyContext>) {
 
     const tgId = ctx.state.user!.tgId;
     const d = await getOrCreateDraft(tgId);
+
     if (!d.pendingInput) {
       const payload = await renderAddStoryTextScreen(ctx);
       return safeEdit(ctx, payload.text, payload.inline as any, "HTML");
@@ -51,24 +53,24 @@ export function registerDraftFinishHandlers(bot: Telegraf<MyContext>) {
     const text = fin.text.trim();
 
     let err: string | null = null;
+
     try {
       const p = d.pendingInput as any;
+
       if (p.kind === "title") {
-        if (text.length < 3 || text.length > 200)
-          throw new Error("Заголовок 3..200 символов");
+        if (text.length < 3 || text.length > 200) throw new Error("Заголовок 3..200 символов");
         await setField(tgId, "title", text);
       } else if (p.kind === "intro") {
         if (text.length < 10) throw new Error("Вступление слишком короткое");
         await setField(tgId, "intro", text);
       } else if (p.kind === "endingTitle") {
-        if (text.length < 3 || text.length > 200)
-          throw new Error("Заголовок концовки 3..200 символов");
+        if (text.length < 3 || text.length > 200) throw new Error("Заголовок концовки 3..200 символов");
         await setEndingTitle(tgId, p.index, text);
       } else if (p.kind === "endingText") {
-        if (text.length < 5)
-          throw new Error("Текст концовки слишком короткий");
+        if (text.length < 5) throw new Error("Текст концовки слишком короткий");
         await setEndingText(tgId, p.index, text);
       }
+
       await resetPending(tgId);
     } catch (e: any) {
       logTelegramError("addStoryText.finish.validate", e);
@@ -76,11 +78,10 @@ export function registerDraftFinishHandlers(bot: Telegraf<MyContext>) {
     }
 
     await tryDeleteUserMessagesHard(ctx, fin.chatId, fin.msgIds);
-
     aggReset(tgId);
+
     const payload = await renderAddStoryTextScreen(ctx);
     const postfix = err ? `Ошибка: ${html(err)}` : "Готово: сохранено.";
     await safeEdit(ctx, `${payload.text}\n\n${postfix}`, payload.inline as any, "HTML");
   });
 }
-

@@ -10,11 +10,11 @@ export async function renderBuyEndingConfirmScreen(
   userId: Types.ObjectId
 ) {
   const bal = await getBalance(userId)
-  const text = `🪙 <b>Открыть концовку за 1 токен?</b>\n\nБаланс: <b>${bal}</b> токен(ов).\n`
+  const text = `🪙 <b>Открыть концовку за 1 ключ?</b>\n\nБаланс: <b>${bal}</b> ключ(ей).\n`
 
   const kb = Markup.inlineKeyboard([
-    [Markup.button.callback("✅ Открыть за 1 токен", `ending:buy:confirm:${storyId}:${endingIndex}`)],
-    [Markup.button.callback("🪙 Купить токены", "tokens:menu")],
+    [Markup.button.callback("✅ Открыть за 1 ключ", `ending:buy:confirm:${storyId}:${endingIndex}`)],
+    [Markup.button.callback("🪙 Купить ключи", "tokens:menu")],
     [Markup.button.callback("↩︎ Отмена", `story:${storyId}`)],
   ])
 

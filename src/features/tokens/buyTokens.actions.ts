@@ -74,7 +74,7 @@ export function registerBuyTokensActions(bot: Telegraf<MyContext>) {
 
     const text =
       `🧾 <b>Подтверждение покупки</b>\n\n` +
-      `Пакет: <b>${pack.tokens}</b> токен(ов)\n` +
+      `Пакет: <b>${pack.tokens}</b> ключ(ей)\n` +
       `Цена: <b>${pack.priceRub}₽</b>\n\n` +
       `Нажмите «Оплатить», чтобы открыть оплату в Telegram.`;
 
@@ -113,10 +113,10 @@ export function registerBuyTokensActions(bot: Telegraf<MyContext>) {
     });
 
     const invoice = {
-      title: `${pack.tokens} токен(ов)`,
-      description: "Токены для открытия дополнительных концовок в историях.",
+      title: `${pack.tokens} ключ(ей)`,
+      description: "Ключи для открытия дополнительных концовок в историях.",
       currency: "RUB",
-      prices: [{ label: `${pack.tokens} токен(ов)`, amount }],
+      prices: [{ label: `${pack.tokens} ключ(ей)`, amount }],
       payload,
       provider_token: cfg.payProviderToken,
 
@@ -128,7 +128,7 @@ export function registerBuyTokensActions(bot: Telegraf<MyContext>) {
           tax_system_code: cfg.kassaTaxSystemCode,
           items: [
             {
-              description: `${pack.tokens} токен(ов) для бота`,
+              description: `${pack.tokens} ключ(ей) для бота`,
               quantity: 1,
 
               amount: { value: pack.priceRub, currency: "RUB" },
@@ -147,7 +147,7 @@ export function registerBuyTokensActions(bot: Telegraf<MyContext>) {
       await ctx.reply(
         "💡 Если вы передумали, вы можете вернуться назад.",
         Markup.inlineKeyboard([
-          [Markup.button.callback("🔙 К покупке токенов", "buy_tokens")],
+          [Markup.button.callback("🔙 К покупке ключей", "buy_tokens")],
           [Markup.button.callback("🏠 Главное меню", "main")],
         ]),
       );
@@ -252,9 +252,9 @@ export function registerBuyTokensActions(bot: Telegraf<MyContext>) {
     }
 
     await (ctx.state as any).sendSingle?.(
-      `🥳 Оплата получена!\nНа ваш счёт зачислено ${pack.tokens} токен(ов).`,
+      `🥳 Оплата получена!\nНа ваш счёт зачислено ${pack.tokens} ключ(ей).`,
       Markup.inlineKeyboard([
-        [Markup.button.callback("💰 Купить ещё токены", "buy_tokens")],
+        [Markup.button.callback("💰 Купить ещё ключи", "buy_tokens")],
         [Markup.button.callback("🏠 Главное меню", "main")],
       ]),
     );

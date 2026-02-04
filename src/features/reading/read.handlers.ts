@@ -19,9 +19,9 @@ type StoryLean = {
   title: string;
   text: string;
   endings: EndingLean[];
-  entryTokens?: number; 
+  entryTokens?: number;
   isPublished: boolean;
-  minRank?: number; 
+  minRank?: number;
   coverUrl?: string | null;
 };
 
@@ -113,14 +113,14 @@ function buildStoryKeyboard(s: StoryLean, page: number, pages: number) {
         const starB = (B?.minRank ?? 0) >= 1 ? "★ " : "";
         const row: any[] = [
           Markup.button.callback(
-            `${starA}${A?.title ?? `Вариант ${i + 1}`}`,
+            `${starA}${esc(A?.title ?? `Вариант ${i + 1}`)}`,
             `read:choose:${s._id}:${i}`
           ),
         ];
         if (B)
           row.push(
             Markup.button.callback(
-              `${starB}${B?.title ?? `Вариант ${i + 2}`}`,
+              `${starB}${esc(B?.title ?? `Вариант ${i + 2}`)}`,
               `read:choose:${s._id}:${i + 1}`
             )
           );
@@ -147,7 +147,9 @@ async function renderAndShowStoryPage(ctx: MyContext, s: StoryLean, page: number
 
   const titleLine = `<b>${esc(s.title)}</b>`;
   const header = pages > 1 ? `<i>(страница ${p + 1}/${pages})</i>\n\n` : "";
-  const body = esc(parts[p] || "");
+
+  const body = parts[p] || "";
+
   const text = `${titleLine}\n\n${header}${body}`;
 
   const kb = buildStoryKeyboard(s, p, pages);
@@ -244,9 +246,9 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     if (!res.ok && res.reason === "no_balance") {
       return editOrReplyText(
         ctx,
-        `😕 Недостаточно токенов.\n\nНужно: <b>${price}</b> токен(ов).`,
+        `😕 Недостаточно ключей.\n\nНужно: <b>${price}</b> ключ(ей).`,
         Markup.inlineKeyboard([
-          [Markup.button.callback("💰 Купить токены", "buy_tokens")],
+          [Markup.button.callback("💰 Купить ключи", "buy_tokens")],
           [Markup.button.callback("⬅️ Назад", "read_stories")],
           [Markup.button.callback("🏠 Главное меню", "main")],
         ])
@@ -365,21 +367,21 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
     if (premiumAll) {
       await chooseEnding(ctx, storyId, idx);
       const { text, inline } = await renderReadEndingScreen(ctx);
-      return editOrReplyText(ctx, esc(text), inline);
+      return editOrReplyText(ctx, text, inline);
     }
 
     const access = await hasAccessToEnding(ctx, userId, s._id, ending._id);
     if (access === "chosen" || access === "extra") {
       await chooseEnding(ctx, storyId, idx);
       const { text, inline } = await renderReadEndingScreen(ctx);
-      return editOrReplyText(ctx, esc(text), inline);
+      return editOrReplyText(ctx, text, inline);
     }
 
     const lockRes = await tryLockFirstChoice(userId as any, tgId, s._id, ending._id);
     if (lockRes === "lockedNow" || lockRes === "alreadySame") {
       await chooseEnding(ctx, storyId, idx);
       const { text, inline } = await renderReadEndingScreen(ctx);
-      return editOrReplyText(ctx, esc(text), inline);
+      return editOrReplyText(ctx, text, inline);
     }
 
     const { renderBuyEndingConfirmScreen } =
@@ -391,9 +393,8 @@ export function registerReadHandlers(bot: Telegraf<MyContext>) {
   bot.action(/^read:end:([^:]+):(\d+):p:(\d+)$/, async (ctx) => {
     await ctx.answerCbQuery();
     const { text, inline } = await renderReadEndingScreen(ctx);
-    return editOrReplyText(ctx, esc(text), inline);
+    return editOrReplyText(ctx, text, inline);
   });
-
 
   bot.action(/^read:list_from:([^:]+)$/, async (ctx) => {
     await ctx.answerCbQuery();

@@ -8,81 +8,68 @@ export async function getOrCreateDraft(tgId: number) {
     d = await DraftStory.create({
       tgId,
       endings: [],
-      entryTokens: 0, 
+      entryTokens: 0,
     });
   }
   return d;
 }
 
 export async function resetPending(tgId: number) {
+
   await DraftStory.updateOne(
     { tgId },
-    { $set: { pendingInput: null, updatedAt: new Date() } },
+    {
+      $set: { pendingInput: null, updatedAt: new Date() },
+      $setOnInsert: { tgId, endings: [], entryTokens: 0 },
+    },
+    { upsert: true }
   );
 }
 
 export async function setPending(tgId: number, pendingInput: any) {
+
   await DraftStory.updateOne(
     { tgId },
-    { $set: { pendingInput, updatedAt: new Date() } },
+    {
+      $set: { pendingInput, updatedAt: new Date() },
+      $setOnInsert: { tgId, endings: [], entryTokens: 0 },
+    },
+    { upsert: true }
   );
 }
-
-/* =========================
-   Story fields
-========================= */
 
 export async function setField(
   tgId: number,
   field: "title" | "intro",
-  value: string,
+  value: string
 ) {
   await DraftStory.updateOne(
     { tgId },
-    { $set: { [field]: value.trim(), updatedAt: new Date() } },
+    { $set: { [field]: value.trim(), updatedAt: new Date() } }
   );
 }
 
-/* =========================
-   Story price (NEW)
-========================= */
-
-export async function setStoryPrice(
-  tgId: number,
-  price: 0 | 1 | 3 | 5,
-) {
+export async function setStoryPrice(tgId: number, price: 0 | 1 | 3 | 5) {
   await DraftStory.updateOne(
     { tgId },
-    { $set: { entryTokens: price, updatedAt: new Date() } },
+    { $set: { entryTokens: price, updatedAt: new Date() } }
   );
 }
-
-/* =========================
-   Endings
-========================= */
 
 function hasBoth(
-  e: DraftEnding,
+  e: DraftEnding
 ): e is DraftEnding & { title: string; text: string } {
   return !!(e.title?.trim() && e.text?.trim());
 }
 
-export async function setEndingTitle(
-  tgId: number,
-  index: number,
-  title: string,
-) {
+export async function setEndingTitle(tgId: number, index: number, title: string) {
   const d = await getOrCreateDraft(tgId);
   if (!d.endings[index]) d.endings[index] = {};
   d.endings[index].title = title.trim();
   await d.save();
 }
 
-export async function setEndingText(
-  tgId: number,
-  index: number,
-  text: string,
-) {
+export async function setEndingText(tgId: number, index: number, text: string) {
   const d = await getOrCreateDraft(tgId);
   if (!d.endings[index]) d.endings[index] = {};
   d.endings[index].text = text.trim();
@@ -95,10 +82,6 @@ export async function removeEnding(tgId: number, index: number) {
   await d.save();
 }
 
-/* =========================
-   Validation
-========================= */
-
 export function canCreate(d: {
   title?: string;
   intro?: string;
@@ -107,23 +90,15 @@ export function canCreate(d: {
   return (
     !!(d.title && d.title.trim().length >= 3) &&
     !!(d.intro && d.intro.trim().length >= 10) &&
-    d.endings.some(
-      (e) => e.title?.trim() && e.text?.trim(),
-    )
+    d.endings.some((e) => e.title?.trim() && e.text?.trim())
   );
 }
-
-/* =========================
-   Commit to Story
-========================= */
 
 export async function commitDraftToStory(tgId: number) {
   const d = (await DraftStory.findOne({ tgId })) as DraftStoryDoc | null;
   if (!d) throw new Error("Draft not found");
 
-  const endings = (d.endings as DraftEnding[])
-    .filter(hasBoth)
-    .slice(0, 3);
+  const endings = (d.endings as DraftEnding[]).filter(hasBoth).slice(0, 3);
 
   if (!d.title || !d.intro || endings.length === 0)
     throw new Error("Draft incomplete");
@@ -134,10 +109,13 @@ export async function commitDraftToStory(tgId: number) {
     endings: endings.map((e) => ({
       title: e.title!.trim(),
       text: e.text!.trim(),
-      minRank: e.minRank ?? 0, 
+      minRank: e.minRank ?? 0,
     })),
-    entryTokens: d.entryTokens ?? 0, 
-    isPublished: true,
+    entryTokens: d.entryTokens ?? 0,
+
+    isPublished: false,
+    publishAt: null,
+    publishedAt: null,
   });
 
   await DraftStory.deleteOne({ tgId }).catch(() => {});

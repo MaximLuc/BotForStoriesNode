@@ -51,7 +51,11 @@ const StorySchema = new mongoose.Schema(
 
     endings: { type: [EndingSchema], default: [] },
     entryTokens: { type: Number, default: 0, enum: [0, 1, 3, 5], index: true },
+
     isPublished: { type: Boolean, default: false, index: true },
+    publishAt: { type: Date, default: null, index: true },   
+    publishedAt: { type: Date, default: null },              
+
     minRank: { type: Number, min: 0, max: 3, default: 0, index: true },
 
     stats: { type: StoryStatsSchema, default: () => ({}) },
@@ -61,6 +65,7 @@ const StorySchema = new mongoose.Schema(
 
 StorySchema.index({ title: "text" });
 StorySchema.index({ isPublished: 1, createdAt: -1 });
+StorySchema.index({ isPublished: 1, publishAt: 1 }); 
 
 export type StoryDoc = mongoose.InferSchemaType<typeof StorySchema>;
 export const Story =

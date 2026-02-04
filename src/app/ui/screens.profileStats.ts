@@ -1,84 +1,51 @@
-import type { InlineKeyboardMarkup } from "telegraf/types";
 import { Markup } from "telegraf";
 import type { MyContext } from "../../shared/types.js";
-import {
-  getUserStatsByTgId,
-  getTopRereads,
-  getTopEndingChoices,
-} from "../../features/stats/userStats.service.js";
-function fmtMs(ms?: number) {
-  if (!ms || ms <= 0) return "-";
-  const s = Math.round(ms / 1000);
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return m > 0 ? `${m} мин ${sec} сек` : `${sec} сек`;
-}
-
-function html(s = "") {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function cut(s?: string, n = 40) {
-  if (!s) return "";
-  return s.length > n ? s.slice(0, n - 1) + "…" : s;
-}
+import { getUserProfileStats } from "../../features/stats/userStats.service.js";
 
 export async function renderProfileUserStatsScreen(ctx: MyContext) {
-  const tgId = ctx.state.user?.tgId;
-  const stats = await getUserStatsByTgId(tgId);
+  const u = ctx.state.user as any;
+  const userId = u?._id;
+  const tgId = u?.tgId;
 
-  const storiesStartedCount = stats?.storiesStartedCount ?? 0;
-  const storiesCompletedCount = stats?.storiesCompletedCount ?? 0;
-  const endingsChosenCount = stats?.endingsChosenCount ?? 0;
-  const dropsCount = stats?.dropsCount ?? 0;
-  const avgReadTimeMs = stats?.avgReadTimeMs ?? 0;
-  const longestStoryChars = stats?.longestStoryChars ?? 0;
+  if (!userId) {
+    return {
+      text: "Профиль недоступен.",
+      inline: Markup.inlineKeyboard([
+        [Markup.button.callback("🏠 На главную", "main")],
+      ]),
+    };
+  }
 
-  const topRereads = await getTopRereads(stats, 3);
-  const topEndings = await getTopEndingChoices(stats, 3);
+  const s = await getUserProfileStats({ userId, tgId });
 
-  const topRereadsTxt = topRereads.length
-    ? topRereads
-        .map(
-          (r, i) => `${i + 1}. ${html(cut(r.title) || r.storyId)} — ${r.count}×`
-        )
-        .join("\n")
-    : "—";
+  const text = `
+<b>📊 Твоя статистика</b>
 
-  const topEndingsTxt = topEndings.length
-    ? topEndings
-        .map((e, i) => {
-          const left = html(cut(e.title) || e.storyId);
-          const right = e.label ? ` (вариант: ${html(e.label)})` : "";
-          return `${i + 1}. ${left}${right} — ${e.count}×`;
-        })
-        .join("\n")
-    : "—";
+<b>🗝 Ключи</b>
+Баланс: <b>${s.keys.balance}</b>
+Потрачено на вход в истории: <b>${s.keys.spentOnStories}</b>
+Потрачено на ГС-истории: <b>${s.keys.spentOnAudio}</b>
+Всего потрачено: <b>${s.keys.spentTotal}</b>
 
-  const text = `Твоя статистика
+<b>📚 Текстовые истории</b>
+Сессий чтения (открытий): <b>${s.reading.sessionsTotal}</b>
+Уникальных историй открыто: <b>${s.reading.uniqueStoriesOpened}</b>
+Дочитал до конца: <b>${s.reading.completedSessions}</b>
+Бросил: <b>${s.reading.droppedSessions}</b>
 
-Запущено историй: <b>${storiesStartedCount}</b>
-Прочитано до конца: <b>${storiesCompletedCount}</b>
-Выборов концовок: <b>${endingsChosenCount}</b>
-Брошено историй: <b>${dropsCount}</b>
+<b>🎭 Концовки</b>
+Открыто концовок за ключи: <b>${s.endings.purchases}</b>
 
-Среднее время чтения: <b>${fmtMs(avgReadTimeMs)}</b>
-Самая длинная история: <b>${longestStoryChars}</b> символов
-
-<b>Топ перечитываемых</b>:
-${topRereadsTxt}
-
-<b>Популярные выборы концовок</b>:
-${topEndingsTxt}`;
-
-  const inlineKb = Markup.inlineKeyboard([
-    [Markup.button.callback("↩︎ В профиль", "profile")],
-    [Markup.button.callback("🏠 На главную", "main")],
-  ]);
+<b>🎧 ГС-истории</b>
+Куплено ГС-историй: <b>${s.audio.purchases}</b>
+`.trim();
 
   return {
     text,
-    inline: inlineKb,
+    inline: Markup.inlineKeyboard([
+      [Markup.button.callback("↩︎ В профиль", "profile")],
+      [Markup.button.callback("🏠 На главную", "main")],
+    ]),
     parseMode: "HTML" as const,
   };
 }

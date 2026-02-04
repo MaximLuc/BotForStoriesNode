@@ -44,9 +44,9 @@ export function registerBuyEndingActions(bot: Telegraf<MyContext>) {
     if (!ok) {
       return editOrReply(
         ctx,
-        "Недостаточно токенов. Перейдите в меню пополнения.",
+        "Недостаточно ключей. Перейдите в меню пополнения.",
         Markup.inlineKeyboard([
-          [Markup.button.callback("🪙 Купить токены", "tokens:menu")],
+          [Markup.button.callback("🪙 Купить ключи", "tokens:menu")],
           [Markup.button.callback("↩︎ Назад", `story:${storyId}`)],
         ])
       );
@@ -62,14 +62,5 @@ export function registerBuyEndingActions(bot: Telegraf<MyContext>) {
       page: 0,
     });
     return editOrReply(ctx, esc(text), inline);
-  });
-
-  bot.action("tokens:menu", async (ctx) => {
-    await ctx.answerCbQuery().catch(() => {});
-    return editOrReply(
-      ctx,
-      "🪙 Покупка токенов скоро будет доступна.\n\nПока можете обратиться в поддержку.",
-      Markup.inlineKeyboard([[Markup.button.callback("↩︎ Назад", "main")]])
-    );
   });
 }
