@@ -40,7 +40,6 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   bot.start(async (ctx) => navigate(ctx, "main"));
 
   bindDual(bot, { text: "Меню", action: "main" }, async (ctx) => navigate(ctx, "main"));
-
   bindDual(bot, { text: "Профиль", action: "profile" }, async (ctx) => navigate(ctx, "profile"));
 
   bot.action("profile:statistics", async (ctx) => navigate(ctx, "profileUserStats"));
@@ -58,8 +57,13 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   bot.action("admin:stories", async (ctx) => navigate(ctx, "storiesList"));
   bot.action("admin:statistics_audio", async (ctx) => navigate(ctx, "statistics_audio"));
 
-  bindDual(bot, { text: "Добавить историю (текстом)", action: "admin:add_story_text" }, async (ctx) =>
-    navigate(ctx, "addStoryText")
+  // ✅ новый экран
+  bot.action("admin:stories_brief", async (ctx) => navigate(ctx, "adminStoriesBrief"));
+
+  bindDual(
+    bot,
+    { text: "Добавить историю (текстом)", action: "admin:add_story_text" },
+    async (ctx) => navigate(ctx, "addStoryText")
   );
 
   bindDual(bot, { text: "Купить ключи", action: "buy_tokens" }, async (ctx) =>
@@ -67,7 +71,6 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   );
 
   bot.action(/^read_stories:page:(\d+)$/, async (ctx) => navigate(ctx, "readStories"));
-
   bot.action(/^listen_stories:page:(\d+)$/, async (ctx) => navigate(ctx, "listenStories"));
 
   bot.action("support", async (ctx) => {

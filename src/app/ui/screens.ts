@@ -1,8 +1,10 @@
-import { buildInlineMain } from "./menus.js";import { renderAddStoryTextScreen } from "./screens.addStoryText.js";
+import { buildInlineMain } from "./menus.js";
+import { renderAddStoryTextScreen } from "./screens.addStoryText.js";
 import { renderReadStoriesScreen } from "./screens.readStories.js";
 import { renderProfileUserStatsScreen } from "./screens.profileStats.js";
 import { renderListenStoriesScreen } from "./screens.listenStories.js";
 import { renderAdminStatsAudioScreen } from "./screens.adminStats.js";
+import { renderAdminStoriesBriefScreen } from "./screens.adminStoriesBrief.js";
 import { isAdmin } from "../../shared/utils.js";
 import type { MyContext } from "../../shared/types.js";
 import { Markup } from "telegraf";
@@ -31,6 +33,7 @@ export type ScreenId =
   | "admin"
   | "storiesList"
   | "statistics_audio"
+  | "adminStoriesBrief"
   | "addStoryText"
   | "readStories"
   | "buyTokens"
@@ -44,9 +47,7 @@ export type ScreenPayload = {
   parseMode?: "Markdown" | "HTML";
 };
 
-type ScreenRenderer = (
-  ctx: MyContext,
-) => Promise<ScreenPayload> | ScreenPayload;
+type ScreenRenderer = (ctx: MyContext) => Promise<ScreenPayload> | ScreenPayload;
 
 function isNewUser(createdAt?: any) {
   if (!createdAt) return false;
@@ -72,6 +73,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
       parseMode: "Markdown" as const,
     };
   },
+
   profile: async (ctx) => {
     const u = ctx.state.user;
     const userId = (u as any)?._id as Types.ObjectId | undefined;
@@ -117,7 +119,7 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     const rows = TOKEN_PACKS.map((p) => [
       Markup.button.callback(
         `${p.tokens} ключ(ей) — ${p.priceRub}₽`,
-        `buy_tokens:confirm:${p.id}`,
+        `buy_tokens:confirm:${p.id}`
       ),
     ]);
 
@@ -138,14 +140,15 @@ const screens: Record<ScreenId, ScreenRenderer> = {
       };
     }
     return {
-      text: "Админ-панель",
+      text: "Админ-панель в этом меню можно управлять ботом и контентом он доступен только для владельца бота",
       inline: Markup.inlineKeyboard([
         [
           Markup.button.callback(
             "🧑‍💻 Статистика ГС-историй",
-            "admin:statistics_audio",
+            "admin:statistics_audio"
           ),
         ],
+        [Markup.button.callback("📌 Истории: последние/черновики", "admin:stories_brief")],
         [Markup.button.callback("Обложки", "admin:cover_list")],
         [Markup.button.callback("📜 Добавить историю", "admin:add_story_text")],
         [Markup.button.callback("🎧 Добавить ГС-историю", "admin:add_audio")],
@@ -163,6 +166,8 @@ const screens: Record<ScreenId, ScreenRenderer> = {
     inline: Markup.inlineKeyboard([[Markup.button.callback("Назад", "admin")]]),
   }),
 
+  adminStoriesBrief: (ctx) => renderAdminStoriesBriefScreen(ctx),
+
   addStoryText: (ctx) => renderAddStoryTextScreen(ctx),
   readStories: (ctx) => renderReadStoriesScreen(ctx),
   listenStories: (ctx) => renderListenStoriesScreen(ctx),
@@ -174,7 +179,6 @@ const screens: Record<ScreenId, ScreenRenderer> = {
 
 export function getScreen(ctx: MyContext, id: ScreenId): ScreenPayload {
   const r = screens[id];
-  if (!r)
-    return { text: "Экран не найден", inline: buildInlineMain(undefined) };
+  if (!r) return { text: "Экран не найден", inline: buildInlineMain(undefined) };
   return r(ctx) as ScreenPayload;
 }
