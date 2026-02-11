@@ -13,6 +13,7 @@ import { startStoryPublisherJob } from "../features/stories/publish.job.js";
 
 export function initBot(token: string) {
   const bot = new Telegraf(token);
+
   bot.use(telemetry);
   bot.use(rateLimit);
   bot.use(auth);
@@ -22,6 +23,7 @@ export function initBot(token: string) {
   bot.use(longTextMerge);
   bot.use(checkSubscription);
   bot.use(dailyButtonsMiddleware);
+
   registerRouter(bot);
 
   startStoryPublisherJob();

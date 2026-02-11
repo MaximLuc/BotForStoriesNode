@@ -109,6 +109,23 @@ function parseAudioOpen(action: string): { audioId: string } | null {
   return { audioId: m[1] };
 }
 
+/** ✅ NEW: help sections */
+function parseHelpSection(action: string): { section: string } | null {
+  const m = action.match(/^help:(general|stories|audio|keys|buttons|other)$/);
+  if (!m) return null;
+  return { section: m[1] };
+}
+
+function helpSectionLabel(section: string) {
+  if (section === "general") return "📌 помощь: Общее";
+  if (section === "stories") return "📖 помощь: Истории";
+  if (section === "audio") return "🎧 помощь: Аудио-истории";
+  if (section === "keys") return "🗝 помощь: Ключи";
+  if (section === "buttons") return "🔘 помощь: Описание кнопок";
+  if (section === "other") return "❓ помощь: Другое";
+  return `помощь: ${section}`;
+}
+
 function labelForAction(action: string): { label: string; known: boolean } {
   // базовые меню
   if (action === "main") return { label: "главное меню", known: true };
@@ -116,8 +133,13 @@ function labelForAction(action: string): { label: string; known: boolean } {
   if (action === "profile:statistics")
     return { label: "открыл статистику профиля", known: true };
 
-  if (action === "help") return { label: "помощь", known: true };
+  // help index
+  if (action === "help") return { label: "помощь (разделы)", known: true };
   if (action === "support") return { label: "техподдержка", known: true };
+
+  // ✅ help sections (if вдруг парсер не отработал, всё равно считаем known)
+  if (action.startsWith("help:"))
+    return { label: "открыл раздел помощи", known: true };
 
   // текстовые истории
   if (action === "read_stories")
@@ -162,7 +184,6 @@ function labelForAction(action: string): { label: string; known: boolean } {
     return { label: "меню покупки ключей", known: true };
   if (action.startsWith("buy_tokens:confirm:"))
     return { label: "выбрал пакет ключей", known: true };
-
   if (action.startsWith("ending:buy:confirm:"))
     return { label: "покупает концовку", known: true };
 
@@ -192,12 +213,17 @@ export const telemetry: MiddlewareFn<MyContext> = async (ctx, next) => {
   const { kind, action, text } = extractEvent(ctx);
 
   if (kind === "cb" && action) {
-    const { label, known } = labelForAction(action);
+    // ✅ NEW: help section logs
+    const hs = parseHelpSection(action);
+    if (hs) {
+      console.log(`🆘 @${firstName} role=${role} | ${helpSectionLabel(hs.section)}`);
+      return next();
+    }
 
     const ending = parseEndingChoose(action);
     if (ending) {
       console.log(
-        `🎭 @${firstName} role=${role} | ${label} | story=${shortId(
+        `🎭 @${firstName} role=${role} | выбрал концовку | story=${shortId(
           ending.storyId
         )} ending#${ending.idx + 1}`
       );
@@ -263,6 +289,7 @@ export const telemetry: MiddlewareFn<MyContext> = async (ctx, next) => {
       );
       return next();
     }
+
     const alp = parseListenStoriesPage(action);
     if (alp) {
       console.log(
@@ -297,6 +324,7 @@ export const telemetry: MiddlewareFn<MyContext> = async (ctx, next) => {
       return next();
     }
 
+    const { label, known } = labelForAction(action);
     if (known) {
       console.log(`📍 @${firstName} role=${role} | ${label}`);
     } else {

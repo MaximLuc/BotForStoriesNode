@@ -25,7 +25,6 @@ import { registerBuyTokensActions } from "../features/tokens/buyTokens.actions.j
 
 import { registerAudioHandlers } from "../features/audio/audio.handlers.js";
 import { registerAudioAdmin } from "../features/audio/audio.admin.js";
-import { HELP_TEXT } from "./ui/texts.main.js";
 
 function bindDual(
   bot: Telegraf<MyContext>,
@@ -39,25 +38,81 @@ function bindDual(
 export function registerRouter(bot: Telegraf<MyContext>) {
   bot.start(async (ctx) => navigate(ctx, "main"));
 
-  bindDual(bot, { text: "Меню", action: "main" }, async (ctx) => navigate(ctx, "main"));
-  bindDual(bot, { text: "Профиль", action: "profile" }, async (ctx) => navigate(ctx, "profile"));
+  bot.action(/^welcome:p:(\d+)$/, async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    const p = Number(ctx.match[1]);
+    (ctx.state as any).welcomePage = Number.isFinite(p) ? p : 0;
+    return navigate(ctx, "main");
+  });
 
-  bot.action("profile:statistics", async (ctx) => navigate(ctx, "profileUserStats"));
-
-  bindDual(bot, { text: "Админка", action: "admin" }, async (ctx) => navigate(ctx, "admin"));
-
-  bindDual(bot, { text: "Читать истории", action: "read_stories" }, async (ctx) =>
-    navigate(ctx, "readStories")
+  bindDual(bot, { text: "Меню", action: "main" }, async (ctx) =>
+    navigate(ctx, "main")
   );
 
-  bindDual(bot, { text: "Слушать истории", action: "listen_stories" }, async (ctx) =>
-    navigate(ctx, "listenStories")
+  bindDual(bot, { text: "Профиль", action: "profile" }, async (ctx) =>
+    navigate(ctx, "profile")
   );
 
-  bot.action("admin:stories", async (ctx) => navigate(ctx, "storiesList"));
-  bot.action("admin:statistics_audio", async (ctx) => navigate(ctx, "statistics_audio"));
+  bot.action("profile:statistics", async (ctx) =>
+    navigate(ctx, "profileUserStats")
+  );
 
-  bot.action("admin:stories_brief", async (ctx) => navigate(ctx, "adminStoriesBrief"));
+  bindDual(bot, { text: "Админка", action: "admin" }, async (ctx) =>
+    navigate(ctx, "admin")
+  );
+
+  bindDual(
+    bot,
+    { text: "Читать истории", action: "read_stories" },
+    async (ctx) => navigate(ctx, "readStories")
+  );
+
+  bindDual(
+    bot,
+    { text: "Слушать истории", action: "listen_stories" },
+    async (ctx) => navigate(ctx, "listenStories")
+  );
+
+  bot.action("admin:stats", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return navigate(ctx, "adminStats");
+  });
+
+  bot.action("admin:stories", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return navigate(ctx, "adminStories");
+  });
+
+  bot.action("admin:marketing", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return navigate(ctx, "adminMarketing");
+  });
+
+  bot.action("admin:interactive", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return navigate(ctx, "adminInteractive");
+  });
+
+  bot.action("admin:settings", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return navigate(ctx, "adminInteractive");
+  });
+
+  bot.action("admin:content", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return navigate(ctx, "adminStories");
+  });
+
+
+  bot.action("admin:statistics_audio", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return navigate(ctx, "statistics_audio");
+  });
+
+  bot.action("admin:stories_brief", async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return navigate(ctx, "adminStoriesBrief");
+  });
 
   bindDual(
     bot,
@@ -69,11 +124,18 @@ export function registerRouter(bot: Telegraf<MyContext>) {
     navigate(ctx, "buyTokens")
   );
 
-  bot.action(/^read_stories:page:(\d+)$/, async (ctx) => navigate(ctx, "readStories"));
-  bot.action(/^listen_stories:page:(\d+)$/, async (ctx) => navigate(ctx, "listenStories"));
+  bot.action(/^read_stories:page:(\d+)$/, async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return navigate(ctx, "readStories");
+  });
+
+  bot.action(/^listen_stories:page:(\d+)$/, async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    return navigate(ctx, "listenStories");
+  });
 
   bot.action("support", async (ctx) => {
-    await ctx.answerCbQuery();
+    await ctx.answerCbQuery().catch(() => {});
 
     const text = `
 📨 Техподдержка
@@ -92,22 +154,20 @@ export function registerRouter(bot: Telegraf<MyContext>) {
     });
   });
 
-  bot.action("help", async (ctx) => {
-    await ctx.answerCbQuery();
+  bindDual(bot, { text: "Помощь", action: "help" }, async (ctx) =>
+    navigate(ctx, "help")
+  );
 
-    const text = HELP_TEXT;
+  bot.action(/^help:(general|stories|audio|keys|buttons|other)$/, async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    const id = String(ctx.match[1]) as any;
 
-    await respond(ctx, text.trim(), {
-      parseMode: "Markdown",
-      inline: {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "К техподдержке", callback_data: "support" }],
-            [{ text: "↩︎ В меню", callback_data: "main" }],
-          ],
-        },
-      } as any,
-      linkPreviewOptions: { is_disabled: true },
+    const { renderHelpSectionScreen } = await import("./ui/screens.help.js");
+    const payload = await renderHelpSectionScreen(ctx, id);
+
+    return respond(ctx, payload.text, {
+      parseMode: payload.parseMode ?? "HTML",
+      inline: payload.inline as any,
     });
   });
 
@@ -116,10 +176,13 @@ export function registerRouter(bot: Telegraf<MyContext>) {
   });
 
   bot.command("give_tokens", async (ctx) => {
-    if (!ctx.state.user || !isAdmin(ctx.state.user)) return ctx.reply("Недостаточно прав");
+    if (!ctx.state.user || !isAdmin(ctx.state.user))
+      return ctx.reply("Недостаточно прав");
+
     const parts = (ctx.message as any).text.trim().split(/\s+/);
     const amount = Math.max(1, Number(parts[1] ?? 1));
     const userId = (ctx.state.user as any)?._id as Types.ObjectId;
+
     await addTokens(userId, amount);
     return ctx.reply(`Начислено ${amount} ключ(ей).`);
   });
